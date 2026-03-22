@@ -1,0 +1,16 @@
+.vscode/**
+.github/**
+src/**
+test/**
+node_modules/**
+*.ts
+*.tsx
+tsconfig.json
+vitest.config.ts
+esbuild.config.mjs
+.eslintrc.json
+.prettierrc
+.gitignore
+PRODUCT_RULES.md
+DEV_SETUP.md
+pnpm-lock.yaml
