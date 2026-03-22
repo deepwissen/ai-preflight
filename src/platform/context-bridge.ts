@@ -1,5 +1,12 @@
 import * as vscode from "vscode";
-import type { ContextSnapshot, FileInfo, SelectionInfo, InstructionFileInfo, ToolProfile, AiToolId } from "../core/types.js";
+import type {
+  ContextSnapshot,
+  FileInfo,
+  SelectionInfo,
+  InstructionFileInfo,
+  ToolProfile,
+  AiToolId,
+} from "../core/types.js";
 import { MAX_SELECTION_CHARS, DEBOUNCE_MS } from "../core/types.js";
 import { EventBus } from "../core/event-bus.js";
 import { AI_TOOLS } from "../core/ai-tools.js";
@@ -26,9 +33,7 @@ export class ContextBridge {
   activate(): void {
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => this.scheduleUpdate()),
-      vscode.window.onDidChangeTextEditorSelection(() =>
-        this.scheduleUpdate()
-      ),
+      vscode.window.onDidChangeTextEditorSelection(() => this.scheduleUpdate()),
       vscode.window.tabGroups.onDidChangeTabs(() => this.scheduleUpdate()),
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
         void this.detectAiInstructionFiles();
@@ -55,7 +60,7 @@ export class ContextBridge {
         const filePath = vscode.workspace.asRelativePath(e.document.uri);
         const existing = this.editCounts.get(filePath);
         const now = Date.now();
-        if (existing && (now - existing.lastTimestamp) < ContextBridge.EDIT_WINDOW_MS) {
+        if (existing && now - existing.lastTimestamp < ContextBridge.EDIT_WINDOW_MS) {
           existing.count++;
           existing.lastTimestamp = now;
           if (existing.count >= ContextBridge.EDIT_FREQUENCY_THRESHOLD) {
@@ -123,14 +128,9 @@ export class ContextBridge {
     };
   }
 
-  private getFileInfo(
-    doc: vscode.TextDocument,
-    isActive: boolean
-  ): FileInfo {
+  private getFileInfo(doc: vscode.TextDocument, isActive: boolean): FileInfo {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    const relativePath = workspaceFolder
-      ? vscode.workspace.asRelativePath(doc.uri)
-      : doc.fileName;
+    const relativePath = workspaceFolder ? vscode.workspace.asRelativePath(doc.uri) : doc.fileName;
 
     const text = doc.getText();
     let commentLineCount = 0;
@@ -153,9 +153,7 @@ export class ContextBridge {
     };
   }
 
-  private getSelection(
-    editor: vscode.TextEditor
-  ): SelectionInfo | null {
+  private getSelection(editor: vscode.TextEditor): SelectionInfo | null {
     const sel = editor.selection;
     if (sel.isEmpty) return null;
 
@@ -177,9 +175,7 @@ export class ContextBridge {
         if (tab.input instanceof vscode.TabInputText) {
           const uri = tab.input.uri;
           const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-          const relativePath = workspaceFolder
-            ? vscode.workspace.asRelativePath(uri)
-            : uri.fsPath;
+          const relativePath = workspaceFolder ? vscode.workspace.asRelativePath(uri) : uri.fsPath;
 
           // Check if document is already loaded in memory (no disk I/O)
           const doc = vscode.workspace.textDocuments.find(
@@ -209,15 +205,16 @@ export class ContextBridge {
   }
 
   /** Map glob patterns to the tool that owns them. */
-  private static readonly INSTRUCTION_FILE_PATTERNS: Array<{ pattern: string; toolId: AiToolId }> = [
-    { pattern: "**/.cursorrules", toolId: "cursor" },
-    { pattern: "**/.cursor/rules/**", toolId: "cursor" },
-    { pattern: "**/.github/copilot-instructions.md", toolId: "copilot" },
-    { pattern: "**/CLAUDE.md", toolId: "claude-code" },
-    { pattern: "**/.windsurfrules", toolId: "windsurf" },
-    { pattern: "**/.amazonq/rules/**", toolId: "amazon-q" },
-    { pattern: "**/GEMINI.md", toolId: "gemini" },
-  ];
+  private static readonly INSTRUCTION_FILE_PATTERNS: Array<{ pattern: string; toolId: AiToolId }> =
+    [
+      { pattern: "**/.cursorrules", toolId: "cursor" },
+      { pattern: "**/.cursor/rules/**", toolId: "cursor" },
+      { pattern: "**/.github/copilot-instructions.md", toolId: "copilot" },
+      { pattern: "**/CLAUDE.md", toolId: "claude-code" },
+      { pattern: "**/.windsurfrules", toolId: "windsurf" },
+      { pattern: "**/.amazonq/rules/**", toolId: "amazon-q" },
+      { pattern: "**/GEMINI.md", toolId: "gemini" },
+    ];
 
   private static readonly IGNORE_FILE_PATTERNS = [
     "**/.claudeignore",
@@ -229,11 +226,7 @@ export class ContextBridge {
     const files: InstructionFileInfo[] = [];
     for (const { pattern, toolId } of ContextBridge.INSTRUCTION_FILE_PATTERNS) {
       try {
-        const found = await vscode.workspace.findFiles(
-          pattern,
-          "**/node_modules/**",
-          5
-        );
+        const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 5);
         for (const uri of found) {
           const relativePath = vscode.workspace.asRelativePath(uri);
           let lineCount = 0;
@@ -256,11 +249,7 @@ export class ContextBridge {
     const ignoreFiles: string[] = [];
     for (const pattern of ContextBridge.IGNORE_FILE_PATTERNS) {
       try {
-        const found = await vscode.workspace.findFiles(
-          pattern,
-          "**/node_modules/**",
-          1
-        );
+        const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 1);
         if (found.length > 0) {
           const name = vscode.workspace.asRelativePath(found[0]);
           ignoreFiles.push(name);
@@ -315,8 +304,16 @@ export class ContextBridge {
 
   // Languages where # starts a line comment
   private static readonly HASH_COMMENT_LANGUAGES = new Set([
-    "python", "ruby", "shellscript", "yaml", "perl", "r",
-    "coffeescript", "makefile", "dockerfile", "toml",
+    "python",
+    "ruby",
+    "shellscript",
+    "yaml",
+    "perl",
+    "r",
+    "coffeescript",
+    "makefile",
+    "dockerfile",
+    "toml",
   ]);
 
   private countCommentLines(text: string, languageId: string): number {
@@ -351,4 +348,3 @@ export class ContextBridge {
     return count;
   }
 }
-

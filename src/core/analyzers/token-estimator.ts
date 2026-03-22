@@ -7,11 +7,7 @@ import type {
   RiskLevel,
   FileTokenBreakdown,
 } from "../types.js";
-import {
-  CHARS_PER_TOKEN,
-  TOKEN_BAND_LOW,
-  TOKEN_BAND_HIGH,
-} from "../types.js";
+import { CHARS_PER_TOKEN, TOKEN_BAND_LOW, TOKEN_BAND_HIGH } from "../types.js";
 
 /**
  * Estimates token count from context sources.

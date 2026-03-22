@@ -9,7 +9,9 @@ export function ContextList({ result }: Props) {
 
   return (
     <div style={{ marginBottom: "12px" }}>
-      <h4 style={{ margin: "8px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}>
+      <h4
+        style={{ margin: "8px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}
+      >
         Context Sources
       </h4>
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
@@ -25,11 +27,10 @@ export function ContextList({ result }: Props) {
 
         {/* Open tabs — always show count */}
         <li style={{ padding: "2px 0", fontSize: "12px" }}>
-          {"\u{1F4D1}"} {contextSummary.openTabCount} tab{contextSummary.openTabCount !== 1 ? "s" : ""} open
+          {"\u{1F4D1}"} {contextSummary.openTabCount} tab
+          {contextSummary.openTabCount !== 1 ? "s" : ""} open
           {contextSummary.openTabCount > 10 && (
-            <span style={{ color: "var(--vscode-editorWarning-foreground)" }}>
-              {" "} — too many
-            </span>
+            <span style={{ color: "var(--vscode-editorWarning-foreground)" }}> — too many</span>
           )}
         </li>
 
@@ -48,29 +49,37 @@ export function ContextList({ result }: Props) {
       </ul>
 
       {/* Waste patterns */}
-      {result.wastePatterns.filter((wp) => !result.toolAnnotations?.[wp.ruleId]?.suppressed).length > 0 && (
+      {result.wastePatterns.filter((wp) => !result.toolAnnotations?.[wp.ruleId]?.suppressed)
+        .length > 0 && (
         <>
-          <h4 style={{ margin: "10px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}>
+          <h4
+            style={{
+              margin: "10px 0 4px",
+              fontSize: "11px",
+              opacity: 0.7,
+              textTransform: "uppercase",
+            }}
+          >
             Issues
           </h4>
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {result.wastePatterns
               .filter((wp) => !result.toolAnnotations?.[wp.ruleId]?.suppressed)
               .map((wp) => (
-              <li
-                key={wp.ruleId}
-                style={{
-                  padding: "2px 0",
-                  fontSize: "12px",
-                  color: wp.severity === "warning"
-                    ? "var(--vscode-editorWarning-foreground)"
-                    : "inherit",
-                }}
-              >
-                {wp.severity === "warning" ? "\u26a0" : "\u2139"}{" "}
-                {wp.description}
-              </li>
-            ))}
+                <li
+                  key={wp.ruleId}
+                  style={{
+                    padding: "2px 0",
+                    fontSize: "12px",
+                    color:
+                      wp.severity === "warning"
+                        ? "var(--vscode-editorWarning-foreground)"
+                        : "inherit",
+                  }}
+                >
+                  {wp.severity === "warning" ? "\u26a0" : "\u2139"} {wp.description}
+                </li>
+              ))}
           </ul>
         </>
       )}

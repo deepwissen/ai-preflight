@@ -5,10 +5,7 @@ import type { AnalysisResult, AnalyzerStep, ContextSnapshot } from "./types.js";
  * Each step receives the context and the accumulated partial result.
  * Steps are independent — a failing step doesn't block others.
  */
-export function runPipeline(
-  context: ContextSnapshot,
-  steps: AnalyzerStep[]
-): AnalysisResult {
+export function runPipeline(context: ContextSnapshot, steps: AnalyzerStep[]): AnalysisResult {
   let partial: Partial<AnalysisResult> = {
     timestamp: Date.now(),
     suggestions: [],
@@ -23,18 +20,9 @@ export function runPipeline(
         ...partial,
         ...result,
         // Concatenate arrays instead of overwriting
-        wastePatterns: [
-          ...(partial.wastePatterns ?? []),
-          ...(result.wastePatterns ?? []),
-        ],
-        suggestions: [
-          ...(partial.suggestions ?? []),
-          ...(result.suggestions ?? []),
-        ],
-        positiveSignals: [
-          ...(partial.positiveSignals ?? []),
-          ...(result.positiveSignals ?? []),
-        ],
+        wastePatterns: [...(partial.wastePatterns ?? []), ...(result.wastePatterns ?? [])],
+        suggestions: [...(partial.suggestions ?? []), ...(result.suggestions ?? [])],
+        positiveSignals: [...(partial.positiveSignals ?? []), ...(result.positiveSignals ?? [])],
       };
     } catch (err) {
       console.error("[Pipeline] Step failed, skipping:", err);

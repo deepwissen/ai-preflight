@@ -120,10 +120,7 @@ async function selectFirstFunction(): Promise<void> {
   if (symbols && symbols.length > 0) {
     const firstFunc = findFirstFunction(symbols);
     if (firstFunc) {
-      editor.selection = new vscode.Selection(
-        firstFunc.range.start,
-        firstFunc.range.end
-      );
+      editor.selection = new vscode.Selection(firstFunc.range.start, firstFunc.range.end);
       editor.revealRange(firstFunc.range);
     }
   }
@@ -198,5 +195,5 @@ async function closeTestFiles(): Promise<void> {
 
 function getModulePath(path: string): string {
   const parts = path.split("/");
-  return parts.length >= 3 ? `${parts[0]}/${parts[1]}` : parts[0] ?? ".";
+  return parts.length >= 3 ? `${parts[0]}/${parts[1]}` : (parts[0] ?? ".");
 }

@@ -20,7 +20,9 @@ export function ContextMeter({ usage }: Props) {
 
   return (
     <div style={{ marginBottom: "12px" }}>
-      <h4 style={{ margin: "8px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}>
+      <h4
+        style={{ margin: "8px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}
+      >
         Context Window — {usage.toolDisplayName}
       </h4>
       <div

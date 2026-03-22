@@ -10,7 +10,9 @@ export function TokenDisplay({ estimate }: Props) {
 
   return (
     <div style={{ marginBottom: "12px" }}>
-      <h4 style={{ margin: "8px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}>
+      <h4
+        style={{ margin: "8px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}
+      >
         Prompt Estimate
       </h4>
       <p style={{ margin: "4px 0", fontSize: "13px" }}>

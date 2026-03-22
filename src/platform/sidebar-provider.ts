@@ -1,9 +1,6 @@
 import * as vscode from "vscode";
 import type { AnalysisResult } from "../core/types.js";
-import type {
-  ExtensionToWebviewMessage,
-  WebviewToExtensionMessage,
-} from "../core/messages.js";
+import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from "../core/messages.js";
 import { EventBus } from "../core/event-bus.js";
 import { executeAction } from "./action-executor.js";
 
@@ -54,7 +51,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     // Update sidebar badge — shows warning count for HIGH/MEDIUM risk
     if (this.view) {
-      const warningCount = result.wastePatterns.filter(w => w.severity === "warning").length;
+      const warningCount = result.wastePatterns.filter((w) => w.severity === "warning").length;
       if (result.riskLevel === "high" && warningCount > 0) {
         this.view.badge = { tooltip: "High risk — check context", value: warningCount };
       } else if (result.riskLevel === "medium" && warningCount > 0) {

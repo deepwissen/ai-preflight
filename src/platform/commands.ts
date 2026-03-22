@@ -6,7 +6,9 @@ import type { ContextBridge } from "./context-bridge.js";
 import { EventBus } from "../core/event-bus.js";
 
 interface DismissalApplier {
-  apply(suggestions: import("../core/types.js").Suggestion[]): import("../core/types.js").Suggestion[];
+  apply(
+    suggestions: import("../core/types.js").Suggestion[]
+  ): import("../core/types.js").Suggestion[];
 }
 
 /**
@@ -51,9 +53,7 @@ export function registerCommands(
       }
       const markdown = exportContext(snapshot, result);
       vscode.env.clipboard.writeText(markdown);
-      vscode.window.showInformationMessage(
-        "AI Preflight report copied to clipboard"
-      );
+      vscode.window.showInformationMessage("AI Preflight report copied to clipboard");
     })
   );
 }

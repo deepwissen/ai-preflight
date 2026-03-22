@@ -42,9 +42,7 @@ export class OutcomeTracker {
       riskLevel: result.riskLevel,
       wastePatternIds: result.wastePatterns.map((wp) => wp.ruleId),
       suggestionIds: result.suggestions.map((s) => s.id),
-      dismissedSuggestionIds: result.suggestions
-        .filter((s) => s.dismissed)
-        .map((s) => s.id),
+      dismissedSuggestionIds: result.suggestions.filter((s) => s.dismissed).map((s) => s.id),
       actedSuggestionIds: [],
     };
 
@@ -69,8 +67,7 @@ export class OutcomeTracker {
   }
 
   recordAction(suggestionId: string): void {
-    const lastAnalysis =
-      this.currentSession.analyses[this.currentSession.analyses.length - 1];
+    const lastAnalysis = this.currentSession.analyses[this.currentSession.analyses.length - 1];
     if (lastAnalysis) {
       lastAnalysis.actedSuggestionIds.push(suggestionId);
     }
