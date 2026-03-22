@@ -5,17 +5,12 @@ import type { AnalysisResult, ContextSnapshot } from "./types.js";
  * Useful for debugging, sharing, or clipboard export.
  * Pure function — no side effects.
  */
-export function exportContext(
-  context: ContextSnapshot,
-  result: AnalysisResult
-): string {
+export function exportContext(context: ContextSnapshot, result: AnalysisResult): string {
   const lines: string[] = [];
 
   lines.push("# AI Preflight Report");
   lines.push("");
-  lines.push(
-    `**Risk Level:** ${result.riskLevel.toUpperCase()}  `
-  );
+  lines.push(`**Risk Level:** ${result.riskLevel.toUpperCase()}  `);
   lines.push(
     `**Token Estimate:** ~${result.tokenEstimate.low} – ${result.tokenEstimate.high} tokens (${result.tokenEstimate.band} band, ${result.tokenEstimate.confidence} confidence)  `
   );
@@ -57,7 +52,7 @@ export function exportContext(
   // AI instruction files
   if (context.aiInstructionFiles.length > 0) {
     lines.push(
-      `- **AI instructions:** ${context.aiInstructionFiles.map(f => f.path).join(", ")}`
+      `- **AI instructions:** ${context.aiInstructionFiles.map((f) => f.path).join(", ")}`
     );
   }
 
@@ -69,7 +64,9 @@ export function exportContext(
     for (const entry of result.tokenBreakdown) {
       const lowK = (entry.estimatedTokens.low / 1000).toFixed(1);
       const highK = (entry.estimatedTokens.high / 1000).toFixed(1);
-      lines.push(`- **${entry.path}** (${entry.source}): ~${lowK}k–${highK}k tokens (${entry.percentage}%)`);
+      lines.push(
+        `- **${entry.path}** (${entry.source}): ~${lowK}k–${highK}k tokens (${entry.percentage}%)`
+      );
     }
   }
 

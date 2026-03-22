@@ -13,10 +13,7 @@ export class StatusBar {
   private item: vscode.StatusBarItem;
 
   constructor(private eventBus: EventBus) {
-    this.item = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      100
-    );
+    this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     this.item.command = "ai-preflight.togglePanel";
     this.item.tooltip = "AI Preflight — click to open panel";
     this.setRisk("low");
@@ -54,9 +51,7 @@ export class StatusBar {
       high: new vscode.ThemeColor("statusBarItem.errorBackground"),
     };
 
-    this.item.text = reason
-      ? `${labels[level]} — ${reason}`
-      : labels[level];
+    this.item.text = reason ? `${labels[level]} — ${reason}` : labels[level];
     this.item.backgroundColor = backgrounds[level];
   }
 
@@ -92,7 +87,7 @@ function getTopReason(result: AnalysisResult): string | undefined {
   }
 
   // Priority 2: first warning-severity waste pattern
-  const warning = result.wastePatterns.find(w => w.severity === "warning");
+  const warning = result.wastePatterns.find((w) => w.severity === "warning");
   if (warning) {
     const reasons: Record<string, string> = {
       "large-file": "large file open",

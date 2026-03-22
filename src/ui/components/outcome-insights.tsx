@@ -28,8 +28,7 @@ export function OutcomeInsights({ insights }: Props) {
             {summary.totalAnalyses} analyses | {summary.totalSignals} signals
           </p>
           <div style={{ fontSize: "11px", margin: "4px 0", opacity: 0.8 }}>
-            Risk: {summary.riskDistribution.low} low,{" "}
-            {summary.riskDistribution.medium} med,{" "}
+            Risk: {summary.riskDistribution.low} low, {summary.riskDistribution.medium} med,{" "}
             {summary.riskDistribution.high} high
           </div>
           {correlations.map((c) => (

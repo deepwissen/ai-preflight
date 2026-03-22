@@ -16,7 +16,7 @@ export function registerChatParticipant(
   context: vscode.ExtensionContext,
   contextBridge: ContextBridge,
   pipelineSteps: AnalyzerStep[],
-  dismissalTracker: DismissalTracker,
+  dismissalTracker: DismissalTracker
 ): void {
   const participant = vscode.chat.createChatParticipant(
     "ai-preflight.preflight",
@@ -31,7 +31,7 @@ export function registerChatParticipant(
         : null;
 
       response.markdown(formatResultAsMarkdown(result, promptAnalysis));
-    },
+    }
   );
 
   participant.iconPath = new vscode.ThemeIcon("search-fuzzy");
@@ -41,19 +41,26 @@ export function registerChatParticipant(
 
 function formatResultAsMarkdown(
   result: AnalysisResult,
-  promptAnalysis?: PromptAnalysis | null,
+  promptAnalysis?: PromptAnalysis | null
 ): string {
   const lines: string[] = [];
 
   // Risk badge
-  const riskIcon = result.riskLevel === "low" ? "$(pass)" : result.riskLevel === "medium" ? "$(warning)" : "$(error)";
+  const riskIcon =
+    result.riskLevel === "low"
+      ? "$(pass)"
+      : result.riskLevel === "medium"
+        ? "$(warning)"
+        : "$(error)";
   lines.push(`## ${riskIcon} Prompt Risk: **${result.riskLevel.toUpperCase()}**`);
   lines.push("");
 
   // Token estimate
   const lowK = (result.tokenEstimate.low / 1000).toFixed(1);
   const highK = (result.tokenEstimate.high / 1000).toFixed(1);
-  lines.push(`**Prompt Estimate:** ~${lowK}k – ${highK}k tokens (${result.tokenEstimate.confidence} confidence)`);
+  lines.push(
+    `**Prompt Estimate:** ~${lowK}k – ${highK}k tokens (${result.tokenEstimate.confidence} confidence)`
+  );
   lines.push("");
 
   // Context window usage
@@ -61,7 +68,9 @@ function formatResultAsMarkdown(
     const u = result.contextWindowUsage;
     const usedK = (u.estimatedTokens / 1000).toFixed(1);
     const totalK = (u.contextWindowTokens / 1000).toFixed(0);
-    lines.push(`**Context Window — ${u.toolDisplayName}:** ~${usedK}k of ${totalK}k tokens (${u.estimatedUsagePercent}%)`);
+    lines.push(
+      `**Context Window — ${u.toolDisplayName}:** ~${usedK}k of ${totalK}k tokens (${u.estimatedUsagePercent}%)`
+    );
     lines.push("");
   }
 
@@ -74,7 +83,9 @@ function formatResultAsMarkdown(
     lines.push(`- **Selection:** ${result.contextSummary.selectionLines} lines`);
   }
   if (result.contextSummary.openTabCount > 0) {
-    lines.push(`- **Open tabs:** ${result.contextSummary.openTabCount} (${result.contextSummary.openTabNames.join(", ")})`);
+    lines.push(
+      `- **Open tabs:** ${result.contextSummary.openTabCount} (${result.contextSummary.openTabNames.join(", ")})`
+    );
   }
   lines.push("");
 
@@ -86,7 +97,9 @@ function formatResultAsMarkdown(
       if (entry.percentage === 0) continue;
       const eLow = (entry.estimatedTokens.low / 1000).toFixed(1);
       const eHigh = (entry.estimatedTokens.high / 1000).toFixed(1);
-      lines.push(`- \`${entry.path}\` (${entry.source}): ~${eLow}k–${eHigh}k tokens (${entry.percentage}%)`);
+      lines.push(
+        `- \`${entry.path}\` (${entry.source}): ~${eLow}k–${eHigh}k tokens (${entry.percentage}%)`
+      );
     }
     lines.push("");
   }
@@ -111,7 +124,7 @@ function formatResultAsMarkdown(
   }
 
   // Suggestions
-  const active = result.suggestions.filter(s => !s.dismissed);
+  const active = result.suggestions.filter((s) => !s.dismissed);
   if (active.length > 0) {
     lines.push("### Suggestions");
     for (const s of active) {
@@ -135,10 +148,12 @@ function formatResultAsMarkdown(
 
     // Context-intent match
     if (promptAnalysis.matchingFiles.length > 0) {
-      const names = promptAnalysis.matchingFiles.map(f => `\`${f.split("/").pop()}\``).join(", ");
+      const names = promptAnalysis.matchingFiles.map((f) => `\`${f.split("/").pop()}\``).join(", ");
       lines.push(`$(pass) **Likely relevant files:** ${names}`);
     } else {
-      lines.push("$(warning) **No matching files found** — open files don't appear to match your prompt");
+      lines.push(
+        "$(warning) **No matching files found** — open files don't appear to match your prompt"
+      );
     }
     lines.push("");
 
@@ -153,7 +168,9 @@ function formatResultAsMarkdown(
 
     // Low relevance context
     if (promptAnalysis.unnecessaryFiles.length > 0) {
-      const names = promptAnalysis.unnecessaryFiles.map(f => `\`${f.split("/").pop()}\``).join(", ");
+      const names = promptAnalysis.unnecessaryFiles
+        .map((f) => `\`${f.split("/").pop()}\``)
+        .join(", ");
       lines.push(`$(info) **Low relevance to prompt:** ${names}`);
       if (promptAnalysis.wastedTokenEstimate.high > 0) {
         const wLow = (promptAnalysis.wastedTokenEstimate.low / 1000).toFixed(1);

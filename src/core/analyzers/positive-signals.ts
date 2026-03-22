@@ -1,8 +1,4 @@
-import type {
-  AnalysisResult,
-  ContextSnapshot,
-  PositiveSignal,
-} from "../types.js";
+import type { AnalysisResult, ContextSnapshot, PositiveSignal } from "../types.js";
 
 /**
  * Detects positive context patterns — things the user is doing right.
@@ -54,7 +50,7 @@ export function detectPositiveSignals(
     const modules = new Set(
       context.openTabs.map((t) => {
         const parts = t.path.split("/");
-        return parts.length >= 3 ? `${parts[0]}/${parts[1]}` : parts[0] ?? ".";
+        return parts.length >= 3 ? `${parts[0]}/${parts[1]}` : (parts[0] ?? ".");
       })
     );
     if (modules.size <= 2) {

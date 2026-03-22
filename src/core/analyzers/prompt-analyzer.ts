@@ -11,7 +11,7 @@ import type { ContextSnapshot, AnalysisResult, PromptAnalysis, TaskType } from "
 export function analyzePrompt(
   promptText: string,
   context: ContextSnapshot,
-  _result: AnalysisResult,
+  _result: AnalysisResult
 ): PromptAnalysis {
   const trimmed = promptText.trim();
 
@@ -57,10 +57,22 @@ function emptyAnalysis(): PromptAnalysis {
 
 const TASK_PATTERNS: Array<{ type: TaskType; keywords: RegExp }> = [
   { type: "testing", keywords: /\b(test|spec|assert|expect|mock|stub|coverage)\b/i },
-  { type: "debugging", keywords: /\b(fix|bug|error|fail|broken|crash|issue|debug|trace|root cause)\b/i },
-  { type: "refactoring", keywords: /\b(refactor|rename|extract|move|clean|simplify|restructure)\b/i },
-  { type: "architecture", keywords: /\b(architect|design|pattern|system|scale|structure|approach)\b/i },
-  { type: "explanation", keywords: /\b(explain|what does|how does|why does|understand|describe)\b/i },
+  {
+    type: "debugging",
+    keywords: /\b(fix|bug|error|fail|broken|crash|issue|debug|trace|root cause)\b/i,
+  },
+  {
+    type: "refactoring",
+    keywords: /\b(refactor|rename|extract|move|clean|simplify|restructure)\b/i,
+  },
+  {
+    type: "architecture",
+    keywords: /\b(architect|design|pattern|system|scale|structure|approach)\b/i,
+  },
+  {
+    type: "explanation",
+    keywords: /\b(explain|what does|how does|why does|understand|describe)\b/i,
+  },
   { type: "coding", keywords: /\b(implement|create|add|build|write|generate|make)\b/i },
 ];
 
@@ -83,32 +95,152 @@ function classifyTaskType(promptText: string): TaskType | null {
 // All keywords are used for matching (finding relevant files).
 
 const STOP_WORDS = new Set([
-  "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-  "have", "has", "had", "do", "does", "did", "will", "would", "could",
-  "should", "may", "might", "shall", "can", "need", "must",
-  "i", "me", "my", "we", "our", "you", "your", "it", "its",
-  "this", "that", "these", "those", "in", "on", "at", "to", "for",
-  "of", "with", "by", "from", "as", "into", "about", "between",
-  "through", "after", "before", "above", "below", "up", "down",
-  "and", "but", "or", "not", "no", "so", "if", "then", "than",
-  "too", "very", "just", "also", "how", "what", "when", "where",
-  "why", "all", "each", "every", "both", "few", "more", "most",
-  "some", "any", "other", "new", "old", "like", "use",
-  "file", "files", "code", "please", "help", "want", "using",
-  "function", "method", "class", "type", "interface", "variable",
-  "change", "changes", "changed", "work", "works", "working",
-  "first", "second", "last", "next", "current", "same",
+  "the",
+  "a",
+  "an",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "could",
+  "should",
+  "may",
+  "might",
+  "shall",
+  "can",
+  "need",
+  "must",
+  "i",
+  "me",
+  "my",
+  "we",
+  "our",
+  "you",
+  "your",
+  "it",
+  "its",
+  "this",
+  "that",
+  "these",
+  "those",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "with",
+  "by",
+  "from",
+  "as",
+  "into",
+  "about",
+  "between",
+  "through",
+  "after",
+  "before",
+  "above",
+  "below",
+  "up",
+  "down",
+  "and",
+  "but",
+  "or",
+  "not",
+  "no",
+  "so",
+  "if",
+  "then",
+  "than",
+  "too",
+  "very",
+  "just",
+  "also",
+  "how",
+  "what",
+  "when",
+  "where",
+  "why",
+  "all",
+  "each",
+  "every",
+  "both",
+  "few",
+  "more",
+  "most",
+  "some",
+  "any",
+  "other",
+  "new",
+  "old",
+  "like",
+  "use",
+  "file",
+  "files",
+  "code",
+  "please",
+  "help",
+  "want",
+  "using",
+  "function",
+  "method",
+  "class",
+  "type",
+  "interface",
+  "variable",
+  "change",
+  "changes",
+  "changed",
+  "work",
+  "works",
+  "working",
+  "first",
+  "second",
+  "last",
+  "next",
+  "current",
+  "same",
 ]);
 
 const ACTION_WORDS = new Set([
-  "refactor", "fix", "add", "create", "build", "write", "implement",
-  "generate", "explain", "debug", "test", "update", "move", "rename",
-  "extract", "clean", "simplify", "restructure", "describe", "make",
+  "refactor",
+  "fix",
+  "add",
+  "create",
+  "build",
+  "write",
+  "implement",
+  "generate",
+  "explain",
+  "debug",
+  "test",
+  "update",
+  "move",
+  "rename",
+  "extract",
+  "clean",
+  "simplify",
+  "restructure",
+  "describe",
+  "make",
 ]);
 
-const FILE_REFERENCE_RE = /\b([a-zA-Z][\w.-]*\.(?:ts|tsx|js|jsx|py|go|rs|java|rb|css|html|json|yaml|yml|md))\b/gi;
+const FILE_REFERENCE_RE =
+  /\b([a-zA-Z][\w.-]*\.(?:ts|tsx|js|jsx|py|go|rs|java|rb|css|html|json|yaml|yml|md))\b/gi;
 const PATH_REFERENCE_RE = /\b((?:src|lib|test|app|pkg|packages|modules)\/[\w/.-]+)\b/gi;
-const MODULE_NAME_RE = /\b(?:the\s+)?(\w+)\s+(?:module|service|component|controller|handler|middleware|util|helper|model|view|store|hook|context|provider|factory|manager|router|api)\b/gi;
+const MODULE_NAME_RE =
+  /\b(?:the\s+)?(\w+)\s+(?:module|service|component|controller|handler|middleware|util|helper|model|view|store|hook|context|provider|factory|manager|router|api)\b/gi;
 
 export function extractIntentKeywords(promptText: string): { high: string[]; all: string[] } {
   const highConfidence = new Set<string>();
@@ -150,7 +282,7 @@ export function extractIntentKeywords(promptText: string): { high: string[]; all
   const words = lowerPrompt
     .replace(/[^a-z0-9\s_-]/g, " ")
     .split(/\s+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w) && !ACTION_WORDS.has(w));
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w) && !ACTION_WORDS.has(w));
 
   for (const word of words) {
     allKeywords.add(word);
@@ -161,23 +293,20 @@ export function extractIntentKeywords(promptText: string): { high: string[]; all
 
 // ─── Context-Intent Matching ─────────────────────────────────────
 
-function findMatchingFiles(
-  intentKeywords: string[],
-  context: ContextSnapshot,
-): string[] {
+function findMatchingFiles(intentKeywords: string[], context: ContextSnapshot): string[] {
   if (intentKeywords.length === 0) return [];
 
   const allFiles = [
     ...(context.activeFile ? [context.activeFile] : []),
-    ...context.openTabs.filter(t => !t.isActive),
+    ...context.openTabs.filter((t) => !t.isActive),
   ];
 
   return allFiles
-    .filter(file => {
+    .filter((file) => {
       const lowerPath = file.path.toLowerCase();
-      return intentKeywords.some(kw => lowerPath.includes(kw));
+      return intentKeywords.some((kw) => lowerPath.includes(kw));
     })
-    .map(f => f.path);
+    .map((f) => f.path);
 }
 
 // ─── Missing Context Detection ───────────────────────────────────
@@ -191,20 +320,25 @@ const IMPORT_PATTERNS = [
   /require\s*\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g,
 ];
 
-function findMissingFiles(
-  promptText: string,
-  context: ContextSnapshot,
-): string[] {
+function findMissingFiles(promptText: string, context: ContextSnapshot): string[] {
   const missing: string[] = [];
 
   // Build set of open file basenames
   const openBasenames = new Set<string>();
   for (const tab of context.openTabs) {
-    const base = tab.path.split("/").pop()?.replace(/\.\w+$/, "").toLowerCase();
+    const base = tab.path
+      .split("/")
+      .pop()
+      ?.replace(/\.\w+$/, "")
+      .toLowerCase();
     if (base) openBasenames.add(base);
   }
   if (context.activeFile) {
-    const base = context.activeFile.path.split("/").pop()?.replace(/\.\w+$/, "").toLowerCase();
+    const base = context.activeFile.path
+      .split("/")
+      .pop()
+      ?.replace(/\.\w+$/, "")
+      .toLowerCase();
     if (base) openBasenames.add(base);
   }
 
@@ -224,7 +358,11 @@ function findMissingFiles(
       const re = new RegExp(pattern.source, pattern.flags);
       while ((match = re.exec(context.selection.text)) !== null) {
         const importPath = match[1];
-        const baseName = importPath.split("/").pop()?.replace(/\.\w+$/, "") ?? "";
+        const baseName =
+          importPath
+            .split("/")
+            .pop()
+            ?.replace(/\.\w+$/, "") ?? "";
         if (baseName && !openBasenames.has(baseName)) {
           missing.push(importPath);
         }
@@ -246,7 +384,7 @@ function findMissingFiles(
 function findLowRelevanceFiles(
   highConfidenceKeywords: string[],
   context: ContextSnapshot,
-  matchingFiles: Set<string>,
+  matchingFiles: Set<string>
 ): string[] {
   // No high-confidence keywords → we can't judge relevance → don't flag anything
   if (highConfidenceKeywords.length === 0) return [];
@@ -260,7 +398,7 @@ function findLowRelevanceFiles(
     const lowerPath = tab.path.toLowerCase();
     // Check against ALL keywords (including low-confidence) for matching
     // But this function is only called when high-confidence keywords exist
-    const matchesAnyHighKeyword = highConfidenceKeywords.some(kw => lowerPath.includes(kw));
+    const matchesAnyHighKeyword = highConfidenceKeywords.some((kw) => lowerPath.includes(kw));
     if (matchesAnyHighKeyword) continue;
 
     lowRelevance.push(tab.path);
@@ -299,7 +437,7 @@ function detectScopeHint(promptText: string): string | null {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 
   if (meaningfulWords.length < 3) {
     return "Prompt is very brief — adding more context helps AI understand intent";
@@ -319,11 +457,14 @@ function detectScopeHint(promptText: string): string | null {
 function computeTokenSplit(
   matchingFiles: string[],
   lowRelevanceFiles: string[],
-  context: ContextSnapshot,
+  context: ContextSnapshot
 ): { relevant: { low: number; high: number }; wasted: { low: number; high: number } } {
   const fileMap = new Map<string, { charCount: number; isActive: boolean }>();
   if (context.activeFile) {
-    fileMap.set(context.activeFile.path, { charCount: context.activeFile.charCount, isActive: true });
+    fileMap.set(context.activeFile.path, {
+      charCount: context.activeFile.charCount,
+      isActive: true,
+    });
   }
   for (const tab of context.openTabs) {
     if (!tab.isActive) {
@@ -331,7 +472,8 @@ function computeTokenSplit(
     }
   }
 
-  let relevantLow = 0, relevantHigh = 0;
+  let relevantLow = 0,
+    relevantHigh = 0;
   for (const path of matchingFiles) {
     const file = fileMap.get(path);
     if (file) {
@@ -341,7 +483,8 @@ function computeTokenSplit(
     }
   }
 
-  let wastedLow = 0, wastedHigh = 0;
+  let wastedLow = 0,
+    wastedHigh = 0;
   for (const path of lowRelevanceFiles) {
     const file = fileMap.get(path);
     if (file) {

@@ -1,7 +1,13 @@
 import * as vscode from "vscode";
 import { EventBus } from "./core/event-bus.js";
 import { runPipeline } from "./core/pipeline.js";
-import { estimateTokens, detectWaste, scoreRisk, detectPositiveSignals, detectToolAwareIssues } from "./core/analyzers/index.js";
+import {
+  estimateTokens,
+  detectWaste,
+  scoreRisk,
+  detectPositiveSignals,
+  detectToolAwareIssues,
+} from "./core/analyzers/index.js";
 import { ContextBridge } from "./platform/context-bridge.js";
 import { SidebarProvider } from "./platform/sidebar-provider.js";
 import { StatusBar } from "./platform/status-bar.js";
@@ -56,16 +62,15 @@ function activateInternal(context: vscode.ExtensionContext): void {
 
   // Register sidebar webview
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      "ai-preflight.panel",
-      sidebarProvider
-    )
+    vscode.window.registerWebviewViewProvider("ai-preflight.panel", sidebarProvider)
   );
 
   // 4. Dismissal tracking (persisted across restarts)
   const dismissalStore: DismissalStore = {
     load: () => context.workspaceState.get<string[]>(DISMISSAL_KEY, []),
-    save: (ids) => { void context.workspaceState.update(DISMISSAL_KEY, ids); },
+    save: (ids) => {
+      void context.workspaceState.update(DISMISSAL_KEY, ids);
+    },
   };
   const dismissalTracker = createDismissalTracker(dismissalStore);
 
@@ -73,7 +78,9 @@ function activateInternal(context: vscode.ExtensionContext): void {
   const OUTCOME_KEY = "ai-preflight.outcomeSessions";
   const outcomeStore: OutcomeStore = {
     loadSessions: () => context.workspaceState.get<SessionRecord[]>(OUTCOME_KEY, []),
-    saveSessions: (sessions) => { void context.workspaceState.update(OUTCOME_KEY, sessions); },
+    saveSessions: (sessions) => {
+      void context.workspaceState.update(OUTCOME_KEY, sessions);
+    },
   };
   const outcomeTracker = new OutcomeTracker(outcomeStore);
 

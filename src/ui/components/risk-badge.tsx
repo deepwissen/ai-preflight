@@ -37,9 +37,7 @@ export function RiskBadge({ level }: Props) {
           backgroundColor: COLORS[level],
         }}
       />
-      <span style={{ fontWeight: "bold", fontSize: "13px" }}>
-        Prompt Risk: {LABELS[level]}
-      </span>
+      <span style={{ fontWeight: "bold", fontSize: "13px" }}>Prompt Risk: {LABELS[level]}</span>
     </div>
   );
 }

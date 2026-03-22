@@ -1,9 +1,4 @@
-import type {
-  AnalysisResult,
-  ContextSnapshot,
-  WastePattern,
-  Suggestion,
-} from "../types.js";
+import type { AnalysisResult, ContextSnapshot, WastePattern, Suggestion } from "../types.js";
 
 const DEFAULT_MAX_FILE_LINES = 1000;
 const DEFAULT_MAX_FILE_CHARS = 40_000; // ~10k tokens — catches minified/single-line files
@@ -16,8 +11,10 @@ const DEFAULT_MIN_LANG_MISMATCH_TABS = 3;
 const DEFAULT_MIN_LINES_FOR_COMMENT_CHECK = 50;
 const DEFAULT_MAX_COMMENT_RATIO = 0.4;
 
-const GENERATED_FILE_PATTERNS = /\.(map|min\.js|min\.css|bundle\.\w+|chunk\.\w+)$|(^|\/)(?:dist|build|node_modules)\//;
-const LOCK_FILE_PATTERNS = /^(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Gemfile\.lock|Cargo\.lock|poetry\.lock|composer\.lock)$/;
+const GENERATED_FILE_PATTERNS =
+  /\.(map|min\.js|min\.css|bundle\.\w+|chunk\.\w+)$|(^|\/)(?:dist|build|node_modules)\//;
+const LOCK_FILE_PATTERNS =
+  /^(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Gemfile\.lock|Cargo\.lock|poetry\.lock|composer\.lock)$/;
 const ENV_FILE_PATTERNS = /^\.env(\.local|\.development|\.production|\.staging|\.test)?$/;
 const TEST_FILE_PATTERNS = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
 const DATA_FILE_PATTERNS = /\.(csv|tsv|json|xml|yaml|yml|sql)$/;
@@ -35,10 +32,7 @@ export function detectWaste(
   let priority = (partial.suggestions?.length ?? 0) + 1;
 
   // Rule: Generated/non-code file
-  if (
-    context.activeFile &&
-    GENERATED_FILE_PATTERNS.test(context.activeFile.path)
-  ) {
+  if (context.activeFile && GENERATED_FILE_PATTERNS.test(context.activeFile.path)) {
     wastePatterns.push({
       ruleId: "generated-file",
       source: context.activeFile.path,
@@ -63,9 +57,10 @@ export function detectWaste(
     wastePatterns.push({
       ruleId: "large-file",
       source: context.activeFile.path,
-      description: context.activeFile.lineCount > DEFAULT_MAX_FILE_LINES
-        ? `File is ${context.activeFile.lineCount} lines`
-        : `File is ${Math.round(context.activeFile.charCount / 1000)}k characters`,
+      description:
+        context.activeFile.lineCount > DEFAULT_MAX_FILE_LINES
+          ? `File is ${context.activeFile.lineCount} lines`
+          : `File is ${Math.round(context.activeFile.charCount / 1000)}k characters`,
       severity: "warning",
       suggestion: "Select the specific function instead of the whole file",
     });
@@ -82,11 +77,9 @@ export function detectWaste(
   }
 
   // Rule: Lock file open (active or in tabs)
-  const lockFileInTabs = context.openTabs.find(
-    (t) => LOCK_FILE_PATTERNS.test(fileName(t.path))
-  );
+  const lockFileInTabs = context.openTabs.find((t) => LOCK_FILE_PATTERNS.test(fileName(t.path)));
   const lockFile =
-    (context.activeFile && LOCK_FILE_PATTERNS.test(fileName(context.activeFile.path)))
+    context.activeFile && LOCK_FILE_PATTERNS.test(fileName(context.activeFile.path))
       ? context.activeFile.path
       : lockFileInTabs?.path;
   if (lockFile) {
@@ -111,11 +104,9 @@ export function detectWaste(
   }
 
   // Rule: Env file open (privacy risk)
-  const envFileInTabs = context.openTabs.find(
-    (t) => ENV_FILE_PATTERNS.test(fileName(t.path))
-  );
+  const envFileInTabs = context.openTabs.find((t) => ENV_FILE_PATTERNS.test(fileName(t.path)));
   const envFile =
-    (context.activeFile && ENV_FILE_PATTERNS.test(fileName(context.activeFile.path)))
+    context.activeFile && ENV_FILE_PATTERNS.test(fileName(context.activeFile.path))
       ? context.activeFile.path
       : envFileInTabs?.path;
   if (envFile) {
@@ -140,10 +131,7 @@ export function detectWaste(
   }
 
   // Rule: Large selection
-  if (
-    context.selection &&
-    context.selection.lineCount > DEFAULT_MAX_SELECTION_LINES
-  ) {
+  if (context.selection && context.selection.lineCount > DEFAULT_MAX_SELECTION_LINES) {
     wastePatterns.push({
       ruleId: "large-selection",
       source: "selection",
@@ -220,17 +208,9 @@ export function detectWaste(
 
   // Rule: Test + production files mixed
   // Only trigger when many test files are open alongside prod — don't punish TDD (1-2 test files)
-  const testTabs = context.openTabs.filter((t) =>
-    TEST_FILE_PATTERNS.test(t.path)
-  );
-  const prodTabs = context.openTabs.filter(
-    (t) => !TEST_FILE_PATTERNS.test(t.path)
-  );
-  if (
-    testTabs.length >= 3 &&
-    prodTabs.length > 0 &&
-    context.openTabs.length >= 5
-  ) {
+  const testTabs = context.openTabs.filter((t) => TEST_FILE_PATTERNS.test(t.path));
+  const prodTabs = context.openTabs.filter((t) => !TEST_FILE_PATTERNS.test(t.path));
+  if (testTabs.length >= 3 && prodTabs.length > 0 && context.openTabs.length >= 5) {
     wastePatterns.push({
       ruleId: "test-prod-mixed",
       source: "tabs",
@@ -311,8 +291,7 @@ export function detectWaste(
   if (
     context.activeFile &&
     context.activeFile.lineCount > DEFAULT_MIN_LINES_FOR_COMMENT_CHECK &&
-    context.activeFile.commentLineCount / context.activeFile.lineCount >
-      DEFAULT_MAX_COMMENT_RATIO
+    context.activeFile.commentLineCount / context.activeFile.lineCount > DEFAULT_MAX_COMMENT_RATIO
   ) {
     const pct = Math.round(
       (context.activeFile.commentLineCount / context.activeFile.lineCount) * 100
@@ -337,9 +316,7 @@ export function detectWaste(
   for (const tab of context.openTabs) {
     pathCounts.set(tab.path, (pathCounts.get(tab.path) ?? 0) + 1);
   }
-  const duplicatePath = [...pathCounts.entries()].find(
-    ([, count]) => count >= 2
-  );
+  const duplicatePath = [...pathCounts.entries()].find(([, count]) => count >= 2);
   if (duplicatePath) {
     wastePatterns.push({
       ruleId: "duplicate-tab",
@@ -418,10 +395,7 @@ export function detectWaste(
   // Rule: Language mismatch
   if (context.activeFile && context.activeFile.languageId) {
     const mismatchTabs = context.openTabs.filter(
-      (t) =>
-        !t.isActive &&
-        t.languageId &&
-        t.languageId !== context.activeFile!.languageId
+      (t) => !t.isActive && t.languageId && t.languageId !== context.activeFile!.languageId
     );
     if (mismatchTabs.length >= DEFAULT_MIN_LANG_MISMATCH_TABS) {
       wastePatterns.push({

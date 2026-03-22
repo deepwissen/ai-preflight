@@ -8,15 +8,15 @@ interface Props {
 }
 
 export function Suggestions({ suggestions, onDismiss, onAction, toolAnnotations }: Props) {
-  const visible = suggestions.filter(
-    (s) => !s.dismissed && !toolAnnotations?.[s.id]?.suppressed
-  );
+  const visible = suggestions.filter((s) => !s.dismissed && !toolAnnotations?.[s.id]?.suppressed);
 
   if (visible.length === 0) return null;
 
   return (
     <div style={{ marginBottom: "12px" }}>
-      <h4 style={{ margin: "8px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}>
+      <h4
+        style={{ margin: "8px 0 4px", fontSize: "11px", opacity: 0.7, textTransform: "uppercase" }}
+      >
         Suggestions
       </h4>
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>

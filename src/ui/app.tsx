@@ -1,10 +1,7 @@
 import { render } from "preact";
 import { useState, useEffect } from "preact/hooks";
 import type { AnalysisResult } from "../core/types.js";
-import type {
-  ExtensionToWebviewMessage,
-  WebviewToExtensionMessage,
-} from "../core/messages.js";
+import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from "../core/messages.js";
 import { RiskBadge } from "./components/risk-badge.js";
 import { ContextList } from "./components/context-list.js";
 import { TokenDisplay } from "./components/token-display.js";
@@ -25,9 +22,7 @@ const vscode = acquireVsCodeApi();
 
 function App() {
   const previousState = vscode.getState() as { result?: AnalysisResult } | null;
-  const [result, setResult] = useState<AnalysisResult | null>(
-    previousState?.result ?? null
-  );
+  const [result, setResult] = useState<AnalysisResult | null>(previousState?.result ?? null);
 
   useEffect(() => {
     const handler = (event: MessageEvent<ExtensionToWebviewMessage>) => {

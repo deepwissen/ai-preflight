@@ -92,9 +92,7 @@ function computeContextWindowUsage(
     context.toolProfile.modelId
   );
   const midpoint = Math.round((tokenEst.low + tokenEst.high) / 2);
-  const pct = contextWindowTokens > 0
-    ? Math.round((midpoint / contextWindowTokens) * 100)
-    : 0;
+  const pct = contextWindowTokens > 0 ? Math.round((midpoint / contextWindowTokens) * 100) : 0;
 
   return {
     toolId: context.toolProfile.toolId,
@@ -206,9 +204,7 @@ function checkMissingIgnoreFiles(
 ): void {
   if (toolDef.ignoreFiles.length === 0) return;
 
-  const hasIgnoreFile = toolDef.ignoreFiles.some((ig) =>
-    context.ignoreFiles.includes(ig)
-  );
+  const hasIgnoreFile = toolDef.ignoreFiles.some((ig) => context.ignoreFiles.includes(ig));
 
   if (!hasIgnoreFile) {
     const ignoreFileName = toolDef.ignoreFiles[0];

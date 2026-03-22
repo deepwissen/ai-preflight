@@ -94,10 +94,7 @@ export const AI_TOOLS: Record<AiToolId, AiToolDefinition> = {
 /**
  * Returns the effective context window size, considering an optional model override.
  */
-export function getContextWindowTokens(
-  toolId: AiToolId,
-  modelId?: string
-): number {
+export function getContextWindowTokens(toolId: AiToolId, modelId?: string): number {
   const tool = AI_TOOLS[toolId];
   if (!tool) return 0;
   if (modelId && tool.models) {
