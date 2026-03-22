@@ -56,7 +56,7 @@ jobs:
         run: npm audit --audit-level=moderate
 
       - name: Check for known vulnerable packages
-        run: npx audit-ci --moderate
+        run: npx --no-install audit-ci --moderate
 
   # ─── Stage 3: Test ──────────────────────────────────────────────
   test:
