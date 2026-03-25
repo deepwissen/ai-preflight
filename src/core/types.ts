@@ -224,6 +224,20 @@ export interface PromptAnalysis {
   scopeHint: string | null;
   relevantTokenEstimate: { low: number; high: number };
   wastedTokenEstimate: { low: number; high: number };
+  workspaceMatches: WorkspaceMatch[];
+}
+
+// ─── Workspace Search ───────────────────────────────────────────
+// Files found in workspace but not currently open. Used by @preflight chat participant.
+
+export type WorkspaceMatchReason = "import" | "filename" | "test-pair" | "nearby" | "content";
+
+export interface WorkspaceMatch {
+  path: string;
+  reason: WorkspaceMatchReason;
+  keyword: string;
+  confidence: "high" | "medium" | "low";
+  contentMatch?: { lineNumber: number; preview: string };
 }
 
 // ─── Enums & Unions ───────────────────────────────────────────────

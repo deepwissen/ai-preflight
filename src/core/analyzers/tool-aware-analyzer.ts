@@ -8,6 +8,7 @@ import type {
   WastePattern,
 } from "../types.js";
 import { AI_TOOLS, getContextWindowTokens } from "../ai-tools.js";
+import { IMPORT_PATTERNS } from "../import-patterns.js";
 
 /**
  * Tool-aware analyzer — runs LAST in the pipeline.
@@ -306,13 +307,6 @@ function checkConversationLength(
 }
 
 // ─── F8: Context Gap Detection ────────────────────────────────────
-
-const IMPORT_PATTERNS = [
-  // TypeScript/JavaScript: import ... from './foo'
-  /(?:import\s+(?:[\s\S]*?)\s+from\s+['"])(\.\.?\/[^'"]+)['"]/g,
-  // require('./foo')
-  /require\s*\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g,
-];
 
 function detectContextGaps(
   context: ContextSnapshot,

@@ -13,4 +13,5 @@ esbuild.config.mjs
 .gitignore
 PRODUCT_RULES.md
 DEV_SETUP.md
+FUTUREREQUESTS.md
 pnpm-lock.yaml

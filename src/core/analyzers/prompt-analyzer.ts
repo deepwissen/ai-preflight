@@ -1,4 +1,11 @@
-import type { ContextSnapshot, AnalysisResult, PromptAnalysis, TaskType } from "../types.js";
+import type {
+  ContextSnapshot,
+  AnalysisResult,
+  PromptAnalysis,
+  TaskType,
+  WorkspaceMatch,
+} from "../types.js";
+import { IMPORT_PATTERNS } from "../import-patterns.js";
 
 /**
  * Analyzes a user's prompt text against their current IDE context.
@@ -11,7 +18,8 @@ import type { ContextSnapshot, AnalysisResult, PromptAnalysis, TaskType } from "
 export function analyzePrompt(
   promptText: string,
   context: ContextSnapshot,
-  _result: AnalysisResult
+  _result: AnalysisResult,
+  workspaceMatches: WorkspaceMatch[] = []
 ): PromptAnalysis {
   const trimmed = promptText.trim();
 
@@ -37,6 +45,7 @@ export function analyzePrompt(
     scopeHint,
     relevantTokenEstimate: tokenSplit.relevant,
     wastedTokenEstimate: tokenSplit.wasted,
+    workspaceMatches,
   };
 }
 
@@ -50,6 +59,7 @@ function emptyAnalysis(): PromptAnalysis {
     scopeHint: null,
     relevantTokenEstimate: { low: 0, high: 0 },
     wastedTokenEstimate: { low: 0, high: 0 },
+    workspaceMatches: [],
   };
 }
 
@@ -314,11 +324,6 @@ function findMatchingFiles(intentKeywords: string[], context: ContextSnapshot): 
 // Only high-confidence signals:
 // 1. Files explicitly named in prompt ("fix auth.ts") but not open
 // 2. Imports in selection text not in open tabs
-
-const IMPORT_PATTERNS = [
-  /(?:import\s+(?:[\s\S]*?)\s+from\s+['"])(\.\.?\/[^'"]+)['"]/g,
-  /require\s*\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g,
-];
 
 function findMissingFiles(promptText: string, context: ContextSnapshot): string[] {
   const missing: string[] = [];

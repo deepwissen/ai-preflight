@@ -4,7 +4,13 @@ import { ContextBridge } from "./context-bridge.js";
 import { runPipeline } from "../core/pipeline.js";
 import type { AnalyzerStep } from "../core/types.js";
 import type { createDismissalTracker } from "../core/dismissal-tracker.js";
-import { analyzePrompt } from "../core/analyzers/prompt-analyzer.js";
+import { analyzePrompt, extractIntentKeywords } from "../core/analyzers/prompt-analyzer.js";
+import { searchWorkspace } from "./workspace-searcher.js";
+import {
+  rankWorkspaceMatches,
+  groupWorkspaceMatches,
+  formatMatchReason,
+} from "../core/analyzers/workspace-ranker.js";
 
 type DismissalTracker = ReturnType<typeof createDismissalTracker>;
 
@@ -20,15 +26,45 @@ export function registerChatParticipant(
 ): void {
   const participant = vscode.chat.createChatParticipant(
     "ai-preflight.preflight",
-    (request, _chatContext, response, _token) => {
+    async (request, _chatContext, response, token) => {
       const snapshot = contextBridge.captureNow();
       const result = runPipeline(snapshot, pipelineSteps);
       result.suggestions = dismissalTracker.apply(result.suggestions);
 
-      // Prompt-aware analysis when user typed text after @preflight
-      const promptAnalysis = request.prompt.trim()
-        ? analyzePrompt(request.prompt, snapshot, result)
-        : null;
+      let promptAnalysis: PromptAnalysis | null = null;
+
+      if (request.prompt.trim()) {
+        // Extract keywords for workspace search
+        const { high: highKeywords, all: allKeywords } = extractIntentKeywords(request.prompt);
+
+        // Build set of open tab paths
+        const openTabPaths = new Set<string>();
+        for (const tab of snapshot.openTabs) {
+          openTabPaths.add(tab.path);
+        }
+        if (snapshot.activeFile) {
+          openTabPaths.add(snapshot.activeFile.path);
+        }
+
+        // Read active file content for import scanning
+        const activeEditor = vscode.window.activeTextEditor;
+        const activeFileContent = activeEditor?.document.getText() ?? null;
+        const activeFilePath = activeEditor?.document.uri.fsPath ?? null;
+
+        // Search workspace for related files not currently open
+        const workspaceMatches = await searchWorkspace({
+          keywords: highKeywords.length > 0 ? highKeywords : allKeywords,
+          openTabPaths,
+          activeFileContent,
+          activeFilePath,
+          token,
+        });
+
+        // Rank and pass to prompt analyzer
+        const ranked = rankWorkspaceMatches(workspaceMatches);
+
+        promptAnalysis = analyzePrompt(request.prompt, snapshot, result, ranked);
+      }
 
       response.markdown(formatResultAsMarkdown(result, promptAnalysis));
     }
@@ -178,6 +214,47 @@ function formatResultAsMarkdown(
         lines.push(`  (~${wLow}k–${wHigh}k tokens unlikely related to this task)`);
       }
       lines.push("");
+    }
+
+    // Workspace matches — found in workspace but not open
+    if (promptAnalysis.workspaceMatches.length > 0) {
+      const { strong, possible } = groupWorkspaceMatches(promptAnalysis.workspaceMatches);
+
+      if (strong.length > 0) {
+        lines.push("$(search) **Found in workspace (strongly related):**");
+        for (const m of strong) {
+          lines.push(`  - \`${m.path}\` — ${formatMatchReason(m)}`);
+        }
+        lines.push("");
+      }
+
+      if (possible.length > 0) {
+        lines.push("$(search) **Found in workspace (possibly related):**");
+        for (const m of possible) {
+          if (m.contentMatch && m.contentMatch.preview) {
+            lines.push(
+              `  - \`${m.path}\` — ${formatMatchReason(m)} (line ${m.contentMatch.lineNumber})`
+            );
+            lines.push(`    > ${m.contentMatch.preview}`);
+          } else {
+            lines.push(`  - \`${m.path}\` — ${formatMatchReason(m)}`);
+          }
+        }
+        lines.push("");
+      }
+
+      // Action hint
+      if (strong.length > 0) {
+        lines.push(
+          `$(lightbulb) **Tip:** Open the ${strong.length} strongly related file(s) above to improve AI context for this task`
+        );
+        lines.push("");
+      } else if (possible.length > 0) {
+        lines.push(
+          `$(lightbulb) **Tip:** ${possible.length} possibly related file(s) found — review if they'd help with this task`
+        );
+        lines.push("");
+      }
     }
 
     // Task-relevant tokens

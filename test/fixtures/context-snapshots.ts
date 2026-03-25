@@ -28,8 +28,8 @@ export const CLEAN_SMALL: ContextSnapshot = {
   clipboardSize: null,
   chatHistoryLength: 0,
   aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
-  toolProfile: null,
-  ignoreFiles: [],
+  toolProfile: { toolId: "cursor" as const, detectedVia: "auto" as const },
+  ignoreFiles: [".cursorignore"],
 };
 
 /** Medium-sized context with a selection — should produce MEDIUM risk. */
@@ -62,7 +62,7 @@ export const MEDIUM_WITH_SELECTION: ContextSnapshot = {
   clipboardSize: null,
   chatHistoryLength: 2,
   aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
-  toolProfile: null,
+  toolProfile: { toolId: "copilot" as const, detectedVia: "setting" as const },
   ignoreFiles: [],
 };
 

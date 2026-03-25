@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { analyzePrompt, extractIntentKeywords } from "../../src/core/analyzers/prompt-analyzer.js";
-import type { ContextSnapshot, FileInfo, AnalysisResult } from "../../src/core/types.js";
+import type { ContextSnapshot, FileInfo, AnalysisResult, WorkspaceMatch } from "../../src/core/types.js";
 
 function makeFile(overrides: Partial<FileInfo> = {}): FileInfo {
   return {
@@ -419,5 +419,88 @@ describe("prompt-analyzer integration", () => {
 
     expect(analysis.unnecessaryFiles).toEqual([]); // no false positives
     expect(analysis.missingFiles).toEqual([]);      // no noise
+  });
+});
+
+// ─── Workspace Matches ──────────────────────────────────────────
+
+describe("prompt-analyzer workspace matches", () => {
+  it("passes workspace matches through to result", () => {
+    const wsMatches: WorkspaceMatch[] = [
+      {
+        path: "src/auth/auth-utils.ts",
+        reason: "import",
+        keyword: "./auth-utils",
+        confidence: "high",
+      },
+    ];
+    const analysis = analyzePrompt("fix the auth module", makeSnapshot(), makeResult(), wsMatches);
+    expect(analysis.workspaceMatches).toEqual(wsMatches);
+    expect(analysis.workspaceMatches.length).toBe(1);
+  });
+
+  it("defaults to empty workspace matches when not provided", () => {
+    const analysis = analyzePrompt("fix the auth module", makeSnapshot(), makeResult());
+    expect(analysis.workspaceMatches).toEqual([]);
+  });
+
+  it("is backward compatible — existing tests still get empty workspaceMatches", () => {
+    const analysis = analyzePrompt("", makeSnapshot(), makeResult());
+    expect(analysis.workspaceMatches).toEqual([]);
+  });
+
+  it("includes workspaceMatches in empty analysis", () => {
+    const analysis = analyzePrompt("   ", makeSnapshot(), makeResult());
+    expect(analysis.workspaceMatches).toEqual([]);
+  });
+
+  it("preserves workspace matches with contentMatch field", () => {
+    const wsMatches: WorkspaceMatch[] = [
+      {
+        path: "src/session-store.ts",
+        reason: "content",
+        keyword: "jwt",
+        confidence: "low",
+        contentMatch: {
+          lineNumber: 45,
+          preview: "import { verify } from 'jsonwebtoken';",
+        },
+      },
+    ];
+    const analysis = analyzePrompt("fix jwt auth", makeSnapshot(), makeResult(), wsMatches);
+    expect(analysis.workspaceMatches[0].contentMatch).toBeDefined();
+    expect(analysis.workspaceMatches[0].contentMatch?.lineNumber).toBe(45);
+    expect(analysis.workspaceMatches[0].contentMatch?.preview).toContain("jsonwebtoken");
+  });
+
+  it("handles mixed match types in single result", () => {
+    const wsMatches: WorkspaceMatch[] = [
+      { path: "src/auth.ts", reason: "import", keyword: "./auth", confidence: "high" },
+      { path: "src/auth.test.ts", reason: "test-pair", keyword: "auth", confidence: "high" },
+      {
+        path: "src/session.ts",
+        reason: "content",
+        keyword: "auth",
+        confidence: "low",
+        contentMatch: { lineNumber: 10, preview: "const auth = getAuth();" },
+      },
+    ];
+    const analysis = analyzePrompt("fix the auth module", makeSnapshot(), makeResult(), wsMatches);
+    expect(analysis.workspaceMatches.length).toBe(3);
+    expect(analysis.workspaceMatches.map((m) => m.reason)).toEqual(["import", "test-pair", "content"]);
+  });
+
+  it("content matches with empty preview are handled", () => {
+    const wsMatches: WorkspaceMatch[] = [
+      {
+        path: "src/empty-match.ts",
+        reason: "content",
+        keyword: "auth",
+        confidence: "low",
+        contentMatch: { lineNumber: 1, preview: "" },
+      },
+    ];
+    const analysis = analyzePrompt("fix the auth module", makeSnapshot(), makeResult(), wsMatches);
+    expect(analysis.workspaceMatches[0].contentMatch?.preview).toBe("");
   });
 });
