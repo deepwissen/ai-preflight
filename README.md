@@ -53,6 +53,13 @@ Returns:
 - **Missing context** — files mentioned in your prompt that aren't open
 - **Low-relevance files** — open tabs unlikely related to your task, with wasted token estimates
 - **Scope hints** — warnings when prompts are too broad or too vague
+- **Workspace search** — finds related files you haven't opened yet:
+  - **Imported by active file** — follows import paths from your current file
+  - **Filename matches** — searches the workspace for files matching your prompt keywords
+  - **Test companions** — finds matching test or source files
+  - **Nearby files** — sibling files in the same directory as matched files
+  - **Content matches** — files containing your prompt keywords
+  - Results are ranked by relevance and grouped into **strongly related** and **possibly related** with actionable tips
 
 ### Tool-Aware Analysis
 
