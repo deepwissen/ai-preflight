@@ -5,6 +5,61 @@ import { extractImportPaths } from "../core/import-patterns.js";
 const MAX_RESULTS = 20;
 const IMPORT_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.js"];
 
+// Shared exclude pattern for all findFiles calls — skip vendored/generated/env directories
+const EXCLUDED_DIRS = [
+  "**/node_modules/**",
+  "**/venv/**",
+  "**/.venv/**",
+  "**/env/**",
+  "**/__pycache__/**",
+  "**/.git/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/out/**",
+  "**/vendor/**",
+  "**/target/**",
+  "**/.next/**",
+  "**/.nuxt/**",
+  "**/coverage/**",
+  "**/.tox/**",
+  "**/.mypy_cache/**",
+  "**/.pytest_cache/**",
+  "**/bower_components/**",
+  "**/.cargo/**",
+  "**/site-packages/**",
+].join(",");
+
+const EXCLUDE_PATTERN = `{${EXCLUDED_DIRS}}`;
+
+// Secondary check: reject paths that slipped through (e.g., nested venv, vendor dirs)
+const EXCLUDED_SEGMENTS = new Set([
+  "node_modules",
+  "venv",
+  ".venv",
+  "env",
+  "__pycache__",
+  ".git",
+  "dist",
+  "build",
+  "out",
+  "vendor",
+  "target",
+  ".next",
+  ".nuxt",
+  "coverage",
+  ".tox",
+  ".mypy_cache",
+  ".pytest_cache",
+  "bower_components",
+  ".cargo",
+  "site-packages",
+]);
+
+function isExcludedPath(relativePath: string): boolean {
+  const segments = relativePath.split("/");
+  return segments.some((seg) => EXCLUDED_SEGMENTS.has(seg));
+}
+
 /**
  * Searches the workspace for files related to the current prompt but not currently open.
  * Platform layer — imports vscode. Used only by the @preflight chat participant.
@@ -96,7 +151,7 @@ async function scanImports(
     if (token.isCancellationRequested) break;
 
     const resolved = await resolveImportPath(activeDir.path, importPath, token);
-    if (resolved && !seen.has(resolved)) {
+    if (resolved && !seen.has(resolved) && !isExcludedPath(resolved)) {
       matches.push({
         path: resolved,
         reason: "import",
@@ -178,16 +233,12 @@ async function searchByFilename(
     if (keyword.length < 3) continue;
 
     try {
-      const files = await vscode.workspace.findFiles(
-        `**/*${keyword}*`,
-        "**/node_modules/**",
-        10,
-        token
-      );
+      const files = await vscode.workspace.findFiles(`**/*${keyword}*`, EXCLUDE_PATTERN, 10, token);
 
       for (const file of files) {
         const relativePath = vscode.workspace.asRelativePath(file);
         if (seen.has(relativePath)) continue;
+        if (isExcludedPath(relativePath)) continue;
 
         matches.push({
           path: relativePath,
@@ -233,10 +284,11 @@ export async function findTestPairs(
   }
 
   try {
-    const files = await vscode.workspace.findFiles(searchPattern, "**/node_modules/**", 5, token);
+    const files = await vscode.workspace.findFiles(searchPattern, EXCLUDE_PATTERN, 5, token);
     for (const file of files) {
       const relativePath = vscode.workspace.asRelativePath(file);
       if (seen.has(relativePath)) continue;
+      if (isExcludedPath(relativePath)) continue;
 
       matches.push({
         path: relativePath,
@@ -292,11 +344,12 @@ async function searchNearbyFolders(
     if (token.isCancellationRequested) break;
 
     try {
-      const files = await vscode.workspace.findFiles(`${dir}/*`, "**/node_modules/**", 10, token);
+      const files = await vscode.workspace.findFiles(`${dir}/*`, EXCLUDE_PATTERN, 10, token);
 
       for (const file of files) {
         const relativePath = vscode.workspace.asRelativePath(file);
         if (seen.has(relativePath)) continue;
+        if (isExcludedPath(relativePath)) continue;
         if (!isCodeFile(relativePath)) continue;
 
         matches.push({
@@ -318,7 +371,6 @@ async function searchNearbyFolders(
 // ─── Strategy 5: Content Search ───────────────────────────────────
 
 const CONTENT_SEARCH_EXTENSIONS = "**/*.{ts,tsx,js,jsx,py,go,rs,java,rb}";
-const CONTENT_SEARCH_EXCLUDE = "{**/node_modules/**,**/dist/**,**/build/**}";
 const CONTENT_SEARCH_MAX_FILES = 50;
 
 async function searchFileContents(
@@ -337,7 +389,7 @@ async function searchFileContents(
   try {
     const files = await vscode.workspace.findFiles(
       CONTENT_SEARCH_EXTENSIONS,
-      CONTENT_SEARCH_EXCLUDE,
+      EXCLUDE_PATTERN,
       CONTENT_SEARCH_MAX_FILES,
       token
     );
@@ -348,6 +400,7 @@ async function searchFileContents(
 
       const relativePath = vscode.workspace.asRelativePath(file);
       if (seen.has(relativePath)) continue;
+      if (isExcludedPath(relativePath)) continue;
 
       try {
         const doc = await vscode.workspace.openTextDocument(file);
