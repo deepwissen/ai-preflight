@@ -1,10 +1,13 @@
-import type { AnalysisResult } from "../../core/types.js";
+import type { AnalysisResult, SuggestionAction } from "../../core/types.js";
+
+const CLOSEABLE_WASTE_RULES = new Set(["lock-file", "env-file", "data-file", "generated-file"]);
 
 interface Props {
   result: AnalysisResult;
+  onAction?: (action: SuggestionAction) => void;
 }
 
-export function ContextList({ result }: Props) {
+export function ContextList({ result, onAction }: Props) {
   const { contextSummary } = result;
 
   return (
@@ -81,6 +84,35 @@ export function ContextList({ result }: Props) {
                 </li>
               ))}
           </ul>
+          {onAction && (() => {
+            const paths = result.wastePatterns
+              .filter((wp) => CLOSEABLE_WASTE_RULES.has(wp.ruleId) && !result.toolAnnotations?.[wp.ruleId]?.suppressed)
+              .map((wp) => wp.source);
+            if (paths.length === 0) return null;
+            return (
+              <button
+                style={{
+                  marginTop: "6px",
+                  padding: "4px 8px",
+                  fontSize: "11px",
+                  cursor: "pointer",
+                  background: "var(--vscode-button-background)",
+                  color: "var(--vscode-button-foreground)",
+                  border: "none",
+                  borderRadius: "2px",
+                }}
+                onClick={() =>
+                  onAction({
+                    command: "ai-preflight.action.closeWasteTabs",
+                    args: { paths },
+                    label: "Close Waste Tabs",
+                  })
+                }
+              >
+                Close {paths.length} Waste Tab(s)
+              </button>
+            );
+          })()}
         </>
       )}
     </div>

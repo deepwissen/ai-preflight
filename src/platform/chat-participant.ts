@@ -1,8 +1,7 @@
 import * as vscode from "vscode";
-import type { AnalysisResult, PromptAnalysis } from "../core/types.js";
+import type { AnalysisResult, AnalyzerStep, PromptAnalysis, WastePattern, WorkspaceMatch } from "../core/types.js";
 import { ContextBridge } from "./context-bridge.js";
 import { runPipeline } from "../core/pipeline.js";
-import type { AnalyzerStep } from "../core/types.js";
 import type { createDismissalTracker } from "../core/dismissal-tracker.js";
 import { analyzePrompt, extractIntentKeywords } from "../core/analyzers/prompt-analyzer.js";
 import { searchWorkspace } from "./workspace-searcher.js";
@@ -46,27 +45,30 @@ export function registerChatParticipant(
           openTabPaths.add(snapshot.activeFile.path);
         }
 
-        // Read active file content for import scanning
-        const activeEditor = vscode.window.activeTextEditor;
-        const activeFileContent = activeEditor?.document.getText() ?? null;
-        const activeFilePath = activeEditor?.document.uri.fsPath ?? null;
+        // Workspace search — wrapped in try/catch so prompt analysis still runs on failure
+        let ranked: WorkspaceMatch[] = [];
+        try {
+          const activeEditor = vscode.window.activeTextEditor;
+          const activeFileContent = activeEditor?.document.getText() ?? null;
+          const activeFilePath = activeEditor?.document.uri.fsPath ?? null;
 
-        // Search workspace for related files not currently open
-        const workspaceMatches = await searchWorkspace({
-          keywords: highKeywords.length > 0 ? highKeywords : allKeywords,
-          openTabPaths,
-          activeFileContent,
-          activeFilePath,
-          token,
-        });
+          const workspaceMatches = await searchWorkspace({
+            keywords: highKeywords.length > 0 ? highKeywords : allKeywords,
+            openTabPaths,
+            activeFileContent,
+            activeFilePath,
+            token,
+          });
 
-        // Rank and pass to prompt analyzer
-        const ranked = rankWorkspaceMatches(workspaceMatches);
+          ranked = rankWorkspaceMatches(workspaceMatches);
+        } catch {
+          // Workspace search failed — continue with prompt analysis without workspace matches
+        }
 
         promptAnalysis = analyzePrompt(request.prompt, snapshot, result, ranked);
       }
 
-      response.markdown(formatResultAsMarkdown(result, promptAnalysis));
+      renderResponse(response, result, promptAnalysis);
     }
   );
 
@@ -75,12 +77,22 @@ export function registerChatParticipant(
   context.subscriptions.push(participant);
 }
 
-function formatResultAsMarkdown(
+const CLOSEABLE_WASTE_RULES = new Set(["lock-file", "env-file", "data-file", "generated-file"]);
+
+function collectWasteTabPaths(wastePatterns: WastePattern[], extraPaths?: string[]): string[] {
+  const paths = new Set<string>();
+  for (const wp of wastePatterns) {
+    if (CLOSEABLE_WASTE_RULES.has(wp.ruleId)) paths.add(wp.source);
+  }
+  if (extraPaths) for (const p of extraPaths) paths.add(p);
+  return [...paths];
+}
+
+function renderResponse(
+  response: vscode.ChatResponseStream,
   result: AnalysisResult,
   promptAnalysis?: PromptAnalysis | null
-): string {
-  const lines: string[] = [];
-
+): void {
   // Risk badge
   const riskIcon =
     result.riskLevel === "low"
@@ -88,118 +100,148 @@ function formatResultAsMarkdown(
       : result.riskLevel === "medium"
         ? "$(warning)"
         : "$(error)";
-  lines.push(`## ${riskIcon} Prompt Risk: **${result.riskLevel.toUpperCase()}**`);
-  lines.push("");
+  response.markdown(`## ${riskIcon} Prompt Risk: **${result.riskLevel.toUpperCase()}**\n\n`);
 
   // Token estimate
   const lowK = (result.tokenEstimate.low / 1000).toFixed(1);
   const highK = (result.tokenEstimate.high / 1000).toFixed(1);
-  lines.push(
-    `**Prompt Estimate:** ~${lowK}k – ${highK}k tokens (${result.tokenEstimate.confidence} confidence)`
+  response.markdown(
+    `**Prompt Estimate:** ~${lowK}k – ${highK}k tokens (${result.tokenEstimate.confidence} confidence)\n\n`
   );
-  lines.push("");
 
   // Context window usage
   if (result.contextWindowUsage) {
     const u = result.contextWindowUsage;
     const usedK = (u.estimatedTokens / 1000).toFixed(1);
     const totalK = (u.contextWindowTokens / 1000).toFixed(0);
-    lines.push(
-      `**Context Window — ${u.toolDisplayName}:** ~${usedK}k of ${totalK}k tokens (${u.estimatedUsagePercent}%)`
+    response.markdown(
+      `**Context Window — ${u.toolDisplayName}:** ~${usedK}k of ${totalK}k tokens (${u.estimatedUsagePercent}%)\n\n`
     );
-    lines.push("");
   }
 
   // Context sources
-  lines.push("### Context Sources");
+  response.markdown("### Context Sources\n");
   if (result.contextSummary.activeFileName) {
-    lines.push(`- **Active file:** \`${result.contextSummary.activeFileName}\``);
+    response.markdown(`- **Active file:** \`${result.contextSummary.activeFileName}\`\n`);
   }
   if (result.contextSummary.selectionLines) {
-    lines.push(`- **Selection:** ${result.contextSummary.selectionLines} lines`);
+    response.markdown(`- **Selection:** ${result.contextSummary.selectionLines} lines\n`);
   }
   if (result.contextSummary.openTabCount > 0) {
-    lines.push(
-      `- **Open tabs:** ${result.contextSummary.openTabCount} (${result.contextSummary.openTabNames.join(", ")})`
+    response.markdown(
+      `- **Open tabs:** ${result.contextSummary.openTabCount} (${result.contextSummary.openTabNames.join(", ")})\n`
     );
   }
-  lines.push("");
+  response.markdown("\n");
 
   // Token breakdown
   if (result.tokenBreakdown.length > 0) {
-    lines.push("### Token Breakdown");
+    response.markdown("### Token Breakdown\n");
     const sorted = [...result.tokenBreakdown].sort((a, b) => b.percentage - a.percentage);
     for (const entry of sorted) {
       if (entry.percentage === 0) continue;
       const eLow = (entry.estimatedTokens.low / 1000).toFixed(1);
       const eHigh = (entry.estimatedTokens.high / 1000).toFixed(1);
-      lines.push(
-        `- \`${entry.path}\` (${entry.source}): ~${eLow}k–${eHigh}k tokens (${entry.percentage}%)`
+      response.markdown(
+        `- \`${entry.path}\` (${entry.source}): ~${eLow}k–${eHigh}k tokens (${entry.percentage}%)\n`
       );
     }
-    lines.push("");
+    response.markdown("\n");
   }
 
   // Waste patterns
   if (result.wastePatterns.length > 0) {
-    lines.push("### Waste Detected");
+    response.markdown("### Waste Detected\n");
     for (const wp of result.wastePatterns) {
       const icon = wp.severity === "warning" ? "$(warning)" : "$(info)";
-      lines.push(`- ${icon} **${wp.ruleId}:** ${wp.description}`);
+      response.markdown(`- ${icon} **${wp.ruleId}:** ${wp.description}\n`);
     }
-    lines.push("");
+    response.markdown("\n");
+
+    const wasteTabPaths = collectWasteTabPaths(result.wastePatterns, promptAnalysis?.unnecessaryFiles);
+    if (wasteTabPaths.length > 0) {
+      response.button({
+        title: `Close ${wasteTabPaths.length} Waste Tab(s)`,
+        command: "ai-preflight.closeWasteTabs",
+        arguments: [wasteTabPaths],
+      });
+    }
   }
 
   // Positive signals
   if (result.positiveSignals.length > 0) {
-    lines.push("### What's Working");
+    response.markdown("### What's Working\n");
     for (const ps of result.positiveSignals) {
-      lines.push(`- $(pass) **${ps.label}** — ${ps.description}`);
+      response.markdown(`- $(pass) **${ps.label}** — ${ps.description}\n`);
     }
-    lines.push("");
+    response.markdown("\n");
   }
 
   // Suggestions
   const active = result.suggestions.filter((s) => !s.dismissed);
   if (active.length > 0) {
-    lines.push("### Suggestions");
+    response.markdown("### Suggestions\n");
     for (const s of active) {
-      lines.push(`${s.priority}. ${s.text}`);
+      response.markdown(`${s.priority}. ${s.text}\n`);
     }
-    lines.push("");
+    response.markdown("\n");
   }
 
   // ─── Prompt-Aware Analysis ("For This Task" section) ───────────
   if (promptAnalysis && promptAnalysis.intentKeywords.length > 0) {
-    lines.push("---");
-    lines.push("");
-    lines.push("### For This Task");
-    lines.push("");
+    response.markdown("---\n\n### For This Task\n\n");
 
     // Task type
     if (promptAnalysis.taskType) {
-      lines.push(`**Task type:** ${promptAnalysis.taskType}`);
-      lines.push("");
+      response.markdown(`**Task type:** ${promptAnalysis.taskType}\n\n`);
     }
 
     // Context-intent match
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (promptAnalysis.matchingFiles.length > 0) {
-      const names = promptAnalysis.matchingFiles.map((f) => `\`${f.split("/").pop()}\``).join(", ");
-      lines.push(`$(pass) **Likely relevant files:** ${names}`);
+      response.markdown("$(pass) **Likely relevant files:** ");
+      for (let i = 0; i < promptAnalysis.matchingFiles.length; i++) {
+        const f = promptAnalysis.matchingFiles[i];
+        if (workspaceFolder) {
+          const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, f);
+          response.anchor(fileUri, f.split("/").pop() ?? f);
+          response.reference(fileUri);
+        } else {
+          response.markdown(`\`${f.split("/").pop()}\``);
+        }
+        if (i < promptAnalysis.matchingFiles.length - 1) {
+          response.markdown(", ");
+        }
+      }
+      response.markdown("\n");
+      if (workspaceFolder) {
+        response.button({
+          title: "Copy #file References",
+          command: "ai-preflight.copyFileRefs",
+          arguments: [promptAnalysis.matchingFiles],
+        });
+        if (promptAnalysis.workspaceMatches.length === 0) {
+          response.button({
+            title: "Create Focused View",
+            command: "ai-preflight.createFocusedView",
+            arguments: [promptAnalysis.matchingFiles],
+          });
+        }
+      }
     } else {
-      lines.push(
-        "$(warning) **No matching files found** — open files don't appear to match your prompt"
+      response.markdown(
+        "$(warning) **No matching files found** — open files don't appear to match your prompt\n"
       );
     }
-    lines.push("");
+    response.markdown("\n");
 
     // Missing context
     if (promptAnalysis.missingFiles.length > 0) {
-      lines.push("$(info) **Possible missing dependencies:**");
+      response.markdown("$(info) **Possible missing dependencies:**\n");
       for (const f of promptAnalysis.missingFiles) {
-        lines.push(`  - ${f}`);
+        response.markdown(`  - ${f}\n`);
       }
-      lines.push("");
+      response.markdown("\n");
     }
 
     // Low relevance context
@@ -207,13 +249,13 @@ function formatResultAsMarkdown(
       const names = promptAnalysis.unnecessaryFiles
         .map((f) => `\`${f.split("/").pop()}\``)
         .join(", ");
-      lines.push(`$(info) **Low relevance to prompt:** ${names}`);
+      response.markdown(`$(info) **Low relevance to prompt:** ${names}\n`);
       if (promptAnalysis.wastedTokenEstimate.high > 0) {
         const wLow = (promptAnalysis.wastedTokenEstimate.low / 1000).toFixed(1);
         const wHigh = (promptAnalysis.wastedTokenEstimate.high / 1000).toFixed(1);
-        lines.push(`  (~${wLow}k–${wHigh}k tokens unlikely related to this task)`);
+        response.markdown(`  (~${wLow}k–${wHigh}k tokens unlikely related to this task)\n`);
       }
-      lines.push("");
+      response.markdown("\n");
     }
 
     // Workspace matches — found in workspace but not open
@@ -221,39 +263,82 @@ function formatResultAsMarkdown(
       const { strong, possible } = groupWorkspaceMatches(promptAnalysis.workspaceMatches);
 
       if (strong.length > 0) {
-        lines.push("$(search) **Found in workspace (strongly related):**");
+        response.markdown("$(search) **Found in workspace (strongly related):**\n");
         for (const m of strong) {
-          lines.push(`  - \`${m.path}\` — ${formatMatchReason(m)}`);
+          response.markdown("  - ");
+          if (workspaceFolder) {
+            const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, m.path);
+            response.anchor(fileUri, m.path);
+            response.reference(fileUri);
+          } else {
+            response.markdown(`\`${m.path}\``);
+          }
+          response.markdown(` — ${formatMatchReason(m)}\n`);
         }
-        lines.push("");
+        response.markdown("\n");
       }
 
       if (possible.length > 0) {
-        lines.push("$(search) **Found in workspace (possibly related):**");
+        response.markdown("$(search) **Found in workspace (possibly related):**\n");
         for (const m of possible) {
-          if (m.contentMatch && m.contentMatch.preview) {
-            lines.push(
-              `  - \`${m.path}\` — ${formatMatchReason(m)} (line ${m.contentMatch.lineNumber})`
-            );
-            lines.push(`    > ${m.contentMatch.preview}`);
+          response.markdown("  - ");
+          if (workspaceFolder) {
+            const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, m.path);
+            if (m.contentMatch && m.contentMatch.lineNumber != null) {
+              const location = new vscode.Location(
+                fileUri,
+                new vscode.Position(m.contentMatch.lineNumber - 1, 0)
+              );
+              response.anchor(location, m.path);
+            } else {
+              response.anchor(fileUri, m.path);
+            }
+            response.reference(fileUri);
           } else {
-            lines.push(`  - \`${m.path}\` — ${formatMatchReason(m)}`);
+            response.markdown(`\`${m.path}\``);
+          }
+          if (m.contentMatch && m.contentMatch.preview) {
+            response.markdown(` — ${formatMatchReason(m)} (line ${m.contentMatch.lineNumber})\n`);
+            response.markdown(`    > ${m.contentMatch.preview}\n`);
+          } else {
+            response.markdown(` — ${formatMatchReason(m)}\n`);
           }
         }
-        lines.push("");
+        response.markdown("\n");
       }
 
-      // Action hint
-      if (strong.length > 0) {
-        lines.push(
-          `$(lightbulb) **Tip:** Open the ${strong.length} strongly related file(s) above to improve AI context for this task`
+      // Action buttons and tips
+      if (strong.length > 0 && workspaceFolder) {
+        const strongPaths = strong.map((m) => m.path);
+        response.button({
+          title: "Copy #file References",
+          command: "ai-preflight.copyFileRefs",
+          arguments: [strongPaths],
+        });
+        response.button({
+          title: "Open All Strongly Related Files",
+          command: "ai-preflight.openFiles",
+          arguments: [strongPaths],
+        });
+        const focusedFiles = [...promptAnalysis.matchingFiles, ...strongPaths];
+        if (focusedFiles.length > 0) {
+          response.button({
+            title: "Create Focused View",
+            command: "ai-preflight.createFocusedView",
+            arguments: [focusedFiles],
+          });
+        }
+        response.markdown(
+          `\n$(lightbulb) **Tip:** Paste the copied \`#file\` references into your Copilot prompt to include these files as context\n\n`
         );
-        lines.push("");
+      } else if (strong.length > 0) {
+        response.markdown(
+          `$(lightbulb) **Tip:** Add these files to your prompt with \`#file:path\` to include them as Copilot context\n\n`
+        );
       } else if (possible.length > 0) {
-        lines.push(
-          `$(lightbulb) **Tip:** ${possible.length} possibly related file(s) found — review if they'd help with this task`
+        response.markdown(
+          `$(lightbulb) **Tip:** ${possible.length} possibly related file(s) found — add with \`#file:path\` if they'd help with this task\n\n`
         );
-        lines.push("");
       }
     }
 
@@ -261,16 +346,12 @@ function formatResultAsMarkdown(
     if (promptAnalysis.relevantTokenEstimate.high > 0) {
       const rLow = (promptAnalysis.relevantTokenEstimate.low / 1000).toFixed(1);
       const rHigh = (promptAnalysis.relevantTokenEstimate.high / 1000).toFixed(1);
-      lines.push(`**Task-relevant tokens:** ~${rLow}k–${rHigh}k`);
-      lines.push("");
+      response.markdown(`**Task-relevant tokens:** ~${rLow}k–${rHigh}k\n\n`);
     }
 
     // Scope hint
     if (promptAnalysis.scopeHint) {
-      lines.push(`$(lightbulb) ${promptAnalysis.scopeHint}`);
-      lines.push("");
+      response.markdown(`$(lightbulb) ${promptAnalysis.scopeHint}\n\n`);
     }
   }
-
-  return lines.join("\n");
 }

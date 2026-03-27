@@ -41,6 +41,12 @@ export async function executeAction(
     case "ai-preflight.action.closeTestFiles":
       await closeTestFiles();
       break;
+    case "ai-preflight.action.closeWasteTabs":
+      await closeWasteTabs(args);
+      break;
+    case "ai-preflight.action.createFocusedView":
+      await createFocusedView(args);
+      break;
     default:
       console.warn(`[AI Preflight] Unknown action: ${command}`);
   }
@@ -189,6 +195,44 @@ async function closeTestFiles(): Promise<void> {
           await vscode.window.tabGroups.close(tab);
         }
       }
+    }
+  }
+}
+
+async function closeWasteTabs(args?: Record<string, unknown>): Promise<void> {
+  const paths = (args?.paths as string[]) ?? [];
+  if (paths.length === 0) return;
+  const pathSet = new Set(paths);
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (tab.input instanceof vscode.TabInputText) {
+        const tabPath = vscode.workspace.asRelativePath(tab.input.uri);
+        if (pathSet.has(tabPath)) {
+          await vscode.window.tabGroups.close(tab);
+        }
+      }
+    }
+  }
+}
+
+async function createFocusedView(args?: Record<string, unknown>): Promise<void> {
+  const filesToOpen = (args?.files as string[]) ?? [];
+  const folder = vscode.workspace.workspaceFolders?.[0];
+
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (tab.input instanceof vscode.TabInputText && !tab.isActive) {
+        await vscode.window.tabGroups.close(tab);
+      }
+    }
+  }
+
+  if (folder) {
+    for (const p of filesToOpen) {
+      try {
+        const uri = vscode.Uri.joinPath(folder.uri, p);
+        await vscode.window.showTextDocument(uri, { preserveFocus: true, preview: false });
+      } catch { /* skip deleted/moved files */ }
     }
   }
 }

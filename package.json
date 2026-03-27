@@ -64,8 +64,44 @@
       {
         "command": "ai-preflight.exportContext",
         "title": "AI Preflight: Export Context to Clipboard"
+      },
+      {
+        "command": "ai-preflight.openFiles",
+        "title": "AI Preflight: Open Files"
+      },
+      {
+        "command": "ai-preflight.copyFileRefs",
+        "title": "AI Preflight: Copy File References"
+      },
+      {
+        "command": "ai-preflight.closeWasteTabs",
+        "title": "AI Preflight: Close Waste Tabs"
+      },
+      {
+        "command": "ai-preflight.createFocusedView",
+        "title": "AI Preflight: Create Focused View"
       }
     ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "ai-preflight.openFiles",
+          "when": "false"
+        },
+        {
+          "command": "ai-preflight.copyFileRefs",
+          "when": "false"
+        },
+        {
+          "command": "ai-preflight.closeWasteTabs",
+          "when": "false"
+        },
+        {
+          "command": "ai-preflight.createFocusedView",
+          "when": "false"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "ai-preflight.togglePanel",

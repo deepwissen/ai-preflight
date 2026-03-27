@@ -44,7 +44,17 @@ function App() {
   return (
     <div>
       <RiskBadge level={result.riskLevel} />
-      <ContextList result={result} />
+      <ContextList
+        result={result}
+        onAction={(action) => {
+          const msg: WebviewToExtensionMessage = {
+            type: "execute-action",
+            command: action.command,
+            args: action.args,
+          };
+          vscode.postMessage(msg);
+        }}
+      />
       <TokenDisplay estimate={result.tokenEstimate} />
       <TokenBreakdownPanel breakdown={result.tokenBreakdown} />
       <ContextMeter usage={result.contextWindowUsage ?? null} />
