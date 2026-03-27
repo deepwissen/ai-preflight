@@ -232,7 +232,9 @@ async function createFocusedView(args?: Record<string, unknown>): Promise<void> 
       try {
         const uri = vscode.Uri.joinPath(folder.uri, p);
         await vscode.window.showTextDocument(uri, { preserveFocus: true, preview: false });
-      } catch { /* skip deleted/moved files */ }
+      } catch {
+        /* skip deleted/moved files */
+      }
     }
   }
 }

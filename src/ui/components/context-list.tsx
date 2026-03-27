@@ -84,35 +84,40 @@ export function ContextList({ result, onAction }: Props) {
                 </li>
               ))}
           </ul>
-          {onAction && (() => {
-            const paths = result.wastePatterns
-              .filter((wp) => CLOSEABLE_WASTE_RULES.has(wp.ruleId) && !result.toolAnnotations?.[wp.ruleId]?.suppressed)
-              .map((wp) => wp.source);
-            if (paths.length === 0) return null;
-            return (
-              <button
-                style={{
-                  marginTop: "6px",
-                  padding: "4px 8px",
-                  fontSize: "11px",
-                  cursor: "pointer",
-                  background: "var(--vscode-button-background)",
-                  color: "var(--vscode-button-foreground)",
-                  border: "none",
-                  borderRadius: "2px",
-                }}
-                onClick={() =>
-                  onAction({
-                    command: "ai-preflight.action.closeWasteTabs",
-                    args: { paths },
-                    label: "Close Waste Tabs",
-                  })
-                }
-              >
-                Close {paths.length} Waste Tab(s)
-              </button>
-            );
-          })()}
+          {onAction &&
+            (() => {
+              const paths = result.wastePatterns
+                .filter(
+                  (wp) =>
+                    CLOSEABLE_WASTE_RULES.has(wp.ruleId) &&
+                    !result.toolAnnotations?.[wp.ruleId]?.suppressed
+                )
+                .map((wp) => wp.source);
+              if (paths.length === 0) return null;
+              return (
+                <button
+                  style={{
+                    marginTop: "6px",
+                    padding: "4px 8px",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    background: "var(--vscode-button-background)",
+                    color: "var(--vscode-button-foreground)",
+                    border: "none",
+                    borderRadius: "2px",
+                  }}
+                  onClick={() =>
+                    onAction({
+                      command: "ai-preflight.action.closeWasteTabs",
+                      args: { paths },
+                      label: "Close Waste Tabs",
+                    })
+                  }
+                >
+                  Close {paths.length} Waste Tab(s)
+                </button>
+              );
+            })()}
         </>
       )}
     </div>

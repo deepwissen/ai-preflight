@@ -10,7 +10,6 @@ import type {
 import { MAX_SELECTION_CHARS, DEBOUNCE_MS } from "../core/types.js";
 import { EventBus } from "../core/event-bus.js";
 
-
 const CONFLICT_MARKER_PATTERN = /^<{7}\s|^={7}$|^>{7}\s/m;
 
 /**

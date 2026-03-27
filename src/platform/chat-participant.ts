@@ -1,5 +1,11 @@
 import * as vscode from "vscode";
-import type { AnalysisResult, AnalyzerStep, PromptAnalysis, WastePattern, WorkspaceMatch } from "../core/types.js";
+import type {
+  AnalysisResult,
+  AnalyzerStep,
+  PromptAnalysis,
+  WastePattern,
+  WorkspaceMatch,
+} from "../core/types.js";
 import { ContextBridge } from "./context-bridge.js";
 import { runPipeline } from "../core/pipeline.js";
 import type { createDismissalTracker } from "../core/dismissal-tracker.js";
@@ -158,7 +164,10 @@ function renderResponse(
     }
     response.markdown("\n");
 
-    const wasteTabPaths = collectWasteTabPaths(result.wastePatterns, promptAnalysis?.unnecessaryFiles);
+    const wasteTabPaths = collectWasteTabPaths(
+      result.wastePatterns,
+      promptAnalysis?.unnecessaryFiles
+    );
     if (wasteTabPaths.length > 0) {
       response.button({
         title: `Close ${wasteTabPaths.length} Waste Tab(s)`,
