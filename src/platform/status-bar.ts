@@ -55,9 +55,8 @@ export class StatusBar {
     this.item.backgroundColor = backgrounds[level];
   }
 
-  private setBadge(value: string, tooltip: string): void {
+  private setBadge(value: string, _tooltip: string): void {
     try {
-      const viewId = "ai-preflight.panel";
       // vscode.window.tabGroups isn't needed — use the views badge API
       void vscode.commands.executeCommand("setContext", "ai-preflight.riskBadge", value);
       // View badge via the webview view — stored for when sidebar resolves

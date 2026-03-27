@@ -9,7 +9,7 @@ import type {
 } from "../core/types.js";
 import { MAX_SELECTION_CHARS, DEBOUNCE_MS } from "../core/types.js";
 import { EventBus } from "../core/event-bus.js";
-import { AI_TOOLS } from "../core/ai-tools.js";
+
 
 const CONFLICT_MARKER_PATTERN = /^<{7}\s|^={7}$|^>{7}\s/m;
 
