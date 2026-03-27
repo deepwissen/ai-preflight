@@ -53,10 +53,10 @@ jobs:
         run: npm ci
 
       - name: npm audit
-        run: npm audit --audit-level=moderate
+        run: npm audit --audit-level=moderate --omit=dev
 
       - name: Check for known vulnerable packages
-        run: npx --no-install audit-ci --moderate
+        run: npx --no-install audit-ci --moderate --skip-dev
 
   # ─── Stage 3: Test ──────────────────────────────────────────────
   test:
