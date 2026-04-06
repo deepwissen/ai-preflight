@@ -63,6 +63,7 @@ export interface InstructionFileInfo {
   path: string;
   lineCount: number;
   toolId: AiToolId | null;
+  content?: string;
 }
 
 // ─── Analysis Result ──────────────────────────────────────────────
@@ -101,8 +102,17 @@ export interface WasteAnnotation {
 export interface InstructionFileIssue {
   id: string;
   filePath: string;
-  issue: "empty" | "too-short" | "too-long" | "missing";
+  issue:
+    | "empty"
+    | "too-short"
+    | "too-long"
+    | "missing"
+    | "hidden-unicode"
+    | "bidi-override"
+    | "suspicious-instruction";
   lineCount?: number;
+  lineNumber?: number;
+  matchedText?: string;
   description: string;
   suggestion: string;
 }

@@ -229,13 +229,16 @@ export class ContextBridge {
         for (const uri of found) {
           const relativePath = vscode.workspace.asRelativePath(uri);
           let lineCount = 0;
+          let content: string | undefined;
           try {
             const doc = await vscode.workspace.openTextDocument(uri);
             lineCount = doc.lineCount;
+            const text = doc.getText();
+            if (text.length <= 50_000) content = text;
           } catch {
             // File may not be readable
           }
-          files.push({ path: relativePath, lineCount, toolId });
+          files.push({ path: relativePath, lineCount, toolId, content });
         }
       } catch (err) {
         console.warn(`[AI Preflight] Failed to search for ${pattern}:`, err);
