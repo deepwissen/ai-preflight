@@ -67,7 +67,17 @@ export function detectToolAwareIssues(
   // F9: Truncation risk warning
   if (contextWindowUsage) {
     checkTruncationRisk(contextWindowUsage, wastePatterns, suggestions, priority);
+    priority = (partial.suggestions?.length ?? 0) + suggestions.length + 1;
   }
+
+  // F10: Injection surface warning
+  if (contextWindowUsage) {
+    checkInjectionSurface(context, contextWindowUsage, wastePatterns, suggestions, priority);
+    priority = (partial.suggestions?.length ?? 0) + suggestions.length + 1;
+  }
+
+  // F11: Data flow awareness
+  checkDataFlow(context, partial, toolDef, wastePatterns, suggestions, priority);
 
   return {
     contextWindowUsage,
@@ -418,4 +428,69 @@ function checkTruncationRisk(
       dismissed: false,
     });
   }
+}
+
+// ─── F10: Injection Surface Warning ───────────────────────────────
+
+function checkInjectionSurface(
+  context: ContextSnapshot,
+  usage: ContextWindowUsage,
+  wastePatterns: WastePattern[],
+  suggestions: Suggestion[],
+  priority: number
+): void {
+  if (usage.estimatedUsagePercent <= 70) return;
+  if (context.aiInstructionFiles.length === 0) return;
+
+  const fileCount = context.aiInstructionFiles.length;
+  wastePatterns.push({
+    ruleId: "injection-surface",
+    source: "context-window",
+    description: `Large context (~${usage.estimatedUsagePercent}% full) with ${fileCount} instruction file(s) increases prompt injection surface area`,
+    severity: "info",
+    suggestion: "Review instruction files for unexpected content and reduce context size",
+  });
+  suggestions.push({
+    id: "review-injection-surface",
+    text: `Large context (~${usage.estimatedUsagePercent}% full) with ${fileCount} instruction file(s) — review instruction files for unexpected content`,
+    priority: priority++,
+    dismissed: false,
+  });
+}
+
+// ─── F11: Data Flow Awareness ─────────────────────────────────────
+
+function checkDataFlow(
+  context: ContextSnapshot,
+  partial: Partial<AnalysisResult>,
+  toolDef: (typeof AI_TOOLS)[keyof typeof AI_TOOLS],
+  wastePatterns: WastePattern[],
+  suggestions: Suggestion[],
+  priority: number
+): void {
+  if (!context.toolProfile) return;
+
+  const sensitivePatterns = (partial.wastePatterns ?? []).filter(
+    (wp) => wp.ruleId === "env-file" || wp.ruleId === "sensitive-file"
+  );
+  if (sensitivePatterns.length === 0) return;
+
+  const tokenEst = partial.tokenEstimate;
+  const tokenLabel = tokenEst
+    ? `~${Math.round((tokenEst.low + tokenEst.high) / 2 / 1000)}k tokens`
+    : "unknown size";
+
+  wastePatterns.push({
+    ruleId: "data-flow-warning",
+    source: "context-window",
+    description: `Sensitive files in context (${tokenLabel}) will be sent to ${toolDef.provider} (${toolDef.displayName})`,
+    severity: "warning",
+    suggestion: "Close sensitive files before prompting or verify they contain no secrets",
+  });
+  suggestions.push({
+    id: "data-flow-warning",
+    text: `Sensitive files will be sent to ${toolDef.provider} via ${toolDef.displayName} — close them or verify no secrets are present`,
+    priority: priority++,
+    dismissed: false,
+  });
 }

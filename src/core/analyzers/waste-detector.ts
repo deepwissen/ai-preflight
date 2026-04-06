@@ -16,6 +16,11 @@ const GENERATED_FILE_PATTERNS =
 const LOCK_FILE_PATTERNS =
   /^(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Gemfile\.lock|Cargo\.lock|poetry\.lock|composer\.lock)$/;
 const ENV_FILE_PATTERNS = /^\.env(\.local|\.development|\.production|\.staging|\.test)?$/;
+const SENSITIVE_FILE_PATTERNS =
+  /^(id_rsa|id_ed25519|id_ecdsa|id_dsa)(\.pub)?$|\.pem$|\.key$|\.p12$|\.pfx$|\.jks$/;
+const CREDENTIAL_FILE_PATTERNS =
+  /^(credentials\.json|serviceAccountKey\.json|service[-_]?account[-_]?key\.json|gcloud[-_]?credentials\.json|firebase[-_]?adminsdk.*\.json|\.npmrc|\.pypirc|\.netrc)$/;
+const DOCKER_COMPOSE_PATTERNS = /^docker-compose(\.[\w.-]+)?\.ya?ml$/;
 const TEST_FILE_PATTERNS = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
 const DATA_FILE_PATTERNS = /\.(csv|tsv|json|xml|yaml|yml|sql)$/;
 
@@ -103,7 +108,7 @@ export function detectWaste(
     });
   }
 
-  // Rule: Env file open (privacy risk)
+  // Rule: Env file open (security risk)
   const envFileInTabs = context.openTabs.find((t) => ENV_FILE_PATTERNS.test(fileName(t.path)));
   const envFile =
     context.activeFile && ENV_FILE_PATTERNS.test(fileName(context.activeFile.path))
@@ -113,7 +118,7 @@ export function detectWaste(
     wastePatterns.push({
       ruleId: "env-file",
       source: envFile,
-      description: `${fileName(envFile)} may contain secrets`,
+      description: `${fileName(envFile)} contains environment secrets that will be sent to AI`,
       severity: "warning",
       suggestion: "Close .env files before prompting — secrets may leak to AI",
     });
@@ -125,6 +130,41 @@ export function detectWaste(
       action: {
         command: "ai-preflight.action.closeTab",
         args: { path: envFile },
+        label: "Close",
+      },
+    });
+  }
+
+  // Rule: Sensitive file open (SSH keys, PEM files, credentials)
+  const isSensitiveFile = (path: string) => {
+    const name = fileName(path);
+    return (
+      SENSITIVE_FILE_PATTERNS.test(name) ||
+      CREDENTIAL_FILE_PATTERNS.test(name) ||
+      DOCKER_COMPOSE_PATTERNS.test(name)
+    );
+  };
+  const sensitiveFileInTabs = context.openTabs.find((t) => isSensitiveFile(t.path));
+  const sensitiveFile =
+    context.activeFile && isSensitiveFile(context.activeFile.path)
+      ? context.activeFile.path
+      : sensitiveFileInTabs?.path;
+  if (sensitiveFile) {
+    wastePatterns.push({
+      ruleId: "sensitive-file",
+      source: sensitiveFile,
+      description: `${fileName(sensitiveFile)} may contain secrets or private keys — will be sent to AI`,
+      severity: "warning",
+      suggestion: "Close sensitive files before prompting — secrets may leak to AI",
+    });
+    suggestions.push({
+      id: "close-sensitive-file",
+      text: `${fileName(sensitiveFile)} may contain secrets or private keys — close it before prompting`,
+      priority: priority++,
+      dismissed: false,
+      action: {
+        command: "ai-preflight.action.closeTab",
+        args: { path: sensitiveFile },
         label: "Close",
       },
     });

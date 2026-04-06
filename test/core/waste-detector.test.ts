@@ -551,6 +551,364 @@ describe("detectWaste", () => {
     expect(ruleIds).not.toContain("no-selection-large-file");
   });
 
+  // ─── Sensitive file detection ────────────────────────────────
+
+  it("detects SSH private key file as active file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "id_rsa",
+        languageId: "plaintext",
+        lineCount: 30,
+        charCount: 1600,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+    const pattern = result.wastePatterns!.find((w) => w.ruleId === "sensitive-file");
+    expect(pattern!.severity).toBe("warning");
+    expect(pattern!.description).toContain("secrets or private keys");
+  });
+
+  it("detects SSH public key in tabs", () => {
+    const snapshot = makeSnapshot({
+      openTabs: [
+        makeFile({
+          path: "id_ed25519.pub",
+          languageId: "plaintext",
+          lineCount: 1,
+          charCount: 100,
+        }),
+      ],
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects PEM file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "server.pem",
+        languageId: "plaintext",
+        lineCount: 20,
+        charCount: 1000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .key file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "private.key",
+        languageId: "plaintext",
+        lineCount: 20,
+        charCount: 1000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects credentials.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "credentials.json",
+        languageId: "json",
+        lineCount: 50,
+        charCount: 2000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .npmrc", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: ".npmrc",
+        languageId: "plaintext",
+        lineCount: 5,
+        charCount: 200,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects docker-compose.yml", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "docker-compose.yml",
+        languageId: "yaml",
+        lineCount: 50,
+        charCount: 2000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects docker-compose.dev.yaml variant", () => {
+    const snapshot = makeSnapshot({
+      openTabs: [
+        makeFile({
+          path: "docker-compose.dev.yaml",
+          languageId: "yaml",
+          lineCount: 30,
+          charCount: 1200,
+        }),
+      ],
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects serviceAccountKey.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "serviceAccountKey.json",
+        languageId: "json",
+        lineCount: 15,
+        charCount: 800,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .p12 keystore file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "release.p12",
+        languageId: "plaintext",
+        lineCount: 10,
+        charCount: 3000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .pfx certificate file", () => {
+    const snapshot = makeSnapshot({
+      openTabs: [
+        makeFile({
+          path: "cert.pfx",
+          languageId: "plaintext",
+          lineCount: 5,
+          charCount: 2000,
+        }),
+      ],
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .jks keystore file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "keystore.jks",
+        languageId: "plaintext",
+        lineCount: 5,
+        charCount: 2000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects id_ecdsa SSH key", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "id_ecdsa",
+        languageId: "plaintext",
+        lineCount: 10,
+        charCount: 500,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects id_dsa SSH key", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "id_dsa",
+        languageId: "plaintext",
+        lineCount: 20,
+        charCount: 1000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .pypirc credential file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: ".pypirc",
+        languageId: "plaintext",
+        lineCount: 5,
+        charCount: 200,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .netrc credential file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: ".netrc",
+        languageId: "plaintext",
+        lineCount: 3,
+        charCount: 100,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects firebase-adminsdk JSON file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "firebase-adminsdk-abc123.json",
+        languageId: "json",
+        lineCount: 12,
+        charCount: 800,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("sensitive-file suggestion has close tab action with path", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "id_rsa",
+        languageId: "plaintext",
+        lineCount: 30,
+        charCount: 1600,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const suggestion = result.suggestions!.find((s) => s.id === "close-sensitive-file");
+    expect(suggestion).toBeDefined();
+    expect(suggestion!.action).toBeDefined();
+    expect(suggestion!.action!.command).toBe("ai-preflight.action.closeTab");
+    expect(suggestion!.action!.args).toEqual({ path: "id_rsa" });
+  });
+
+  it("env-file description uses security framing", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: ".env",
+        languageId: "plaintext",
+        lineCount: 20,
+        charCount: 500,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const envPattern = result.wastePatterns!.find((w) => w.ruleId === "env-file");
+    expect(envPattern).toBeDefined();
+    expect(envPattern!.description).toContain("environment secrets");
+    expect(envPattern!.description).toContain("will be sent to AI");
+  });
+
+  it("detects both env-file and sensitive-file simultaneously", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: ".env",
+        languageId: "plaintext",
+        lineCount: 20,
+        charCount: 500,
+        isActive: true,
+      }),
+      openTabs: [
+        makeFile({
+          path: "id_rsa",
+          languageId: "plaintext",
+          lineCount: 30,
+          charCount: 1600,
+        }),
+      ],
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("env-file");
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("does not trigger sensitive-file for normal source files", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "src/app.ts",
+        languageId: "typescript",
+        lineCount: 100,
+        charCount: 4000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).not.toContain("sensitive-file");
+  });
+
   // ─── Tier 2: High comment ratio ─────────────────────────────
 
   it("detects high comment ratio (>40%)", () => {
@@ -862,4 +1220,5 @@ describe("detectWaste", () => {
     const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
     expect(ruleIds).not.toContain("language-mismatch");
   });
+
 });

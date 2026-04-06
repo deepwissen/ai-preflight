@@ -21,6 +21,7 @@ function makeSnapshot(overrides: Partial<ContextSnapshot> = {}): ContextSnapshot
     aiInstructionFiles: [],
     toolProfile: null,
     ignoreFiles: [],
+    activeFileTestPairs: [],
     ...overrides,
   };
 }
@@ -555,6 +556,246 @@ describe("detectToolAwareIssues", () => {
       expect(wp).toBeDefined();
       expect(wp!.severity).toBe("warning");
       expect(wp!.description).toContain("truncated");
+    });
+  });
+
+  // ─── F10: Injection Surface Warning ─────────────────────────────
+
+  describe("F10: Injection surface warning", () => {
+    it("fires when context usage > 70% and instruction files exist", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: { toolId: "amazon-q", detectedVia: "setting" },
+          aiInstructionFiles: [makeInstruction(".amazonq/rules/main", 20, "amazon-q")],
+        }),
+        { tokenEstimate: { low: 55000, high: 60000, band: "high", confidence: "medium" } }
+      );
+
+      // midpoint = 57500, amazon-q = 75k → 77%
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "injection-surface");
+      expect(wp).toBeDefined();
+      expect(wp!.severity).toBe("info");
+      expect(wp!.description).toContain("instruction file(s)");
+    });
+
+    it("does not fire when context usage <= 70%", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: cursorProfile(),
+          aiInstructionFiles: [makeInstruction(".cursorrules", 20, "cursor")],
+        }),
+        { tokenEstimate: { low: 10000, high: 20000, band: "medium", confidence: "medium" } }
+      );
+
+      const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+      expect(ruleIds).not.toContain("injection-surface");
+    });
+
+    it("does not fire when no instruction files exist", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: { toolId: "amazon-q", detectedVia: "setting" },
+          aiInstructionFiles: [],
+        }),
+        { tokenEstimate: { low: 55000, high: 60000, band: "high", confidence: "medium" } }
+      );
+
+      const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+      expect(ruleIds).not.toContain("injection-surface");
+    });
+
+    it("does not fire at exactly 70%", () => {
+      // amazon-q = 75k, midpoint = 52500 → 70%
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: { toolId: "amazon-q", detectedVia: "setting" },
+          aiInstructionFiles: [makeInstruction(".amazonq/rules/main", 20, "amazon-q")],
+        }),
+        { tokenEstimate: { low: 52500, high: 52500, band: "high", confidence: "medium" } }
+      );
+
+      const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+      expect(ruleIds).not.toContain("injection-surface");
+    });
+
+    it("includes correct instruction file count in description", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: { toolId: "amazon-q", detectedVia: "setting" },
+          aiInstructionFiles: [
+            makeInstruction(".amazonq/rules/main", 20, "amazon-q"),
+            makeInstruction(".cursorrules", 15, "cursor"),
+            makeInstruction("CLAUDE.md", 30, "claude-code"),
+          ],
+        }),
+        { tokenEstimate: { low: 55000, high: 60000, band: "high", confidence: "medium" } }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "injection-surface");
+      expect(wp).toBeDefined();
+      expect(wp!.description).toContain("3 instruction file(s)");
+    });
+
+    it("generates both wastePattern and suggestion", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: { toolId: "amazon-q", detectedVia: "setting" },
+          aiInstructionFiles: [makeInstruction(".amazonq/rules/main", 20, "amazon-q")],
+        }),
+        { tokenEstimate: { low: 55000, high: 60000, band: "high", confidence: "medium" } }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "injection-surface");
+      const suggestion = result.suggestions!.find((s) => s.id === "review-injection-surface");
+      expect(wp).toBeDefined();
+      expect(suggestion).toBeDefined();
+      expect(suggestion!.text).toContain("instruction file(s)");
+    });
+  });
+
+  // ─── F11: Data Flow Awareness ──────────────────────────────────
+
+  describe("F11: Data flow awareness", () => {
+    it("fires when sensitive files are in waste patterns", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: cursorProfile(),
+        }),
+        {
+          tokenEstimate: { low: 5000, high: 10000, band: "medium", confidence: "medium" },
+          wastePatterns: [
+            { ruleId: "env-file", source: ".env", description: ".env detected", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "data-flow-warning");
+      expect(wp).toBeDefined();
+      expect(wp!.severity).toBe("warning");
+      expect(wp!.description).toContain("Anysphere");
+      expect(wp!.description).toContain("Cursor");
+    });
+
+    it("includes token estimate in description", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: claudeProfile(),
+        }),
+        {
+          tokenEstimate: { low: 10000, high: 20000, band: "medium", confidence: "medium" },
+          wastePatterns: [
+            { ruleId: "sensitive-file", source: "id_rsa", description: "key detected", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "data-flow-warning");
+      expect(wp).toBeDefined();
+      expect(wp!.description).toContain("Anthropic");
+      expect(wp!.description).toContain("~15k tokens");
+    });
+
+    it("does not fire without sensitive waste patterns", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: cursorProfile(),
+        }),
+        {
+          tokenEstimate: { low: 5000, high: 10000, band: "medium", confidence: "medium" },
+          wastePatterns: [
+            { ruleId: "large-file", source: "big.ts", description: "large", severity: "warning", suggestion: "Select" },
+          ],
+        }
+      );
+
+      const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+      expect(ruleIds).not.toContain("data-flow-warning");
+    });
+
+    it("does not fire without tool profile", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({ toolProfile: null }),
+        {
+          wastePatterns: [
+            { ruleId: "env-file", source: ".env", description: ".env detected", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      expect(result).toEqual({});
+    });
+
+    it("shows correct provider for copilot", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: copilotProfile(),
+        }),
+        {
+          tokenEstimate: { low: 5000, high: 10000, band: "medium", confidence: "medium" },
+          wastePatterns: [
+            { ruleId: "env-file", source: ".env", description: ".env detected", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "data-flow-warning");
+      expect(wp).toBeDefined();
+      expect(wp!.description).toContain("Microsoft/GitHub");
+      expect(wp!.description).toContain("GitHub Copilot");
+    });
+
+    it("fires with sensitive-file alone as trigger", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: cursorProfile(),
+        }),
+        {
+          tokenEstimate: { low: 5000, high: 10000, band: "medium", confidence: "medium" },
+          wastePatterns: [
+            { ruleId: "sensitive-file", source: "id_rsa", description: "key file", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "data-flow-warning");
+      expect(wp).toBeDefined();
+      expect(wp!.description).toContain("Anysphere");
+    });
+
+    it("shows 'unknown size' when no token estimate", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: cursorProfile(),
+        }),
+        {
+          wastePatterns: [
+            { ruleId: "env-file", source: ".env", description: ".env detected", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "data-flow-warning");
+      expect(wp).toBeDefined();
+      expect(wp!.description).toContain("unknown size");
+    });
+
+    it("generates suggestion with provider name", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: claudeProfile(),
+        }),
+        {
+          tokenEstimate: { low: 5000, high: 10000, band: "medium", confidence: "medium" },
+          wastePatterns: [
+            { ruleId: "env-file", source: ".env", description: ".env detected", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      const suggestion = result.suggestions!.find((s) => s.id === "data-flow-warning");
+      expect(suggestion).toBeDefined();
+      expect(suggestion!.text).toContain("Anthropic");
+      expect(suggestion!.text).toContain("Claude Code");
     });
   });
 
