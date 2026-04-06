@@ -110,6 +110,7 @@ export interface InstructionFileIssue {
     | "hidden-unicode"
     | "bidi-override"
     | "suspicious-instruction";
+  severity?: "info" | "warning" | "error";
   lineCount?: number;
   lineNumber?: number;
   matchedText?: string;

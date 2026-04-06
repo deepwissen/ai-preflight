@@ -23,6 +23,10 @@ export function runPipeline(context: ContextSnapshot, steps: AnalyzerStep[]): An
         wastePatterns: [...(partial.wastePatterns ?? []), ...(result.wastePatterns ?? [])],
         suggestions: [...(partial.suggestions ?? []), ...(result.suggestions ?? [])],
         positiveSignals: [...(partial.positiveSignals ?? []), ...(result.positiveSignals ?? [])],
+        instructionFileIssues: [
+          ...(partial.instructionFileIssues ?? []),
+          ...(result.instructionFileIssues ?? []),
+        ],
       };
     } catch (err) {
       console.error("[Pipeline] Step failed, skipping:", err);

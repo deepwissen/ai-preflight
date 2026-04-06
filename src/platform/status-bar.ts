@@ -80,12 +80,29 @@ export class StatusBar {
  * Keeps it short — max ~30 chars.
  */
 function getTopReason(result: AnalysisResult): string | undefined {
-  // Priority 1: truncation risk
+  // Priority 1: integrity errors (compound attacks)
+  const integrityError = result.instructionFileIssues.find((i) => i.severity === "error");
+  if (integrityError) {
+    return "compound attack detected";
+  }
+
+  // Priority 2: integrity warnings (prompt injection, bidi)
+  const integrityWarning = result.instructionFileIssues.find((i) => i.severity === "warning");
+  if (integrityWarning) {
+    const reasons: Record<string, string> = {
+      "suspicious-instruction": "prompt injection found",
+      "bidi-override": "bidi attack found",
+      "hidden-unicode": "hidden unicode found",
+    };
+    return reasons[integrityWarning.issue] ?? "integrity issue";
+  }
+
+  // Priority 3: truncation risk
   if (result.contextWindowUsage && result.contextWindowUsage.estimatedUsagePercent > 90) {
     return `${result.contextWindowUsage.estimatedUsagePercent}% context window`;
   }
 
-  // Priority 2: first warning-severity waste pattern
+  // Priority 4: first warning-severity waste pattern
   const warning = result.wastePatterns.find((w) => w.severity === "warning");
   if (warning) {
     const reasons: Record<string, string> = {

@@ -35,8 +35,7 @@ export class ContextBridge {
       vscode.window.onDidChangeTextEditorSelection(() => this.scheduleUpdate()),
       vscode.window.tabGroups.onDidChangeTabs(() => this.scheduleUpdate()),
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
-        void this.detectAiInstructionFiles();
-        void this.detectIgnoreFiles();
+        void this.initAndCapture();
       }),
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("ai-preflight")) {
@@ -79,12 +78,10 @@ export class ContextBridge {
     // Resolve tool profile from settings
     this.resolveToolProfile();
 
-    // Detect AI instruction files and ignore files (cached, refreshed on workspace folder change)
-    void this.detectAiInstructionFiles();
-    void this.detectIgnoreFiles();
-
-    // Initial capture
-    this.captureAndEmit();
+    // Detect AI instruction files and ignore files, then capture.
+    // Awaiting ensures the first snapshot includes instruction file content
+    // so integrity findings are reflected in the initial risk level.
+    void this.initAndCapture();
   }
 
   /** Stop listening and clean up. */
@@ -97,6 +94,11 @@ export class ContextBridge {
   /** Capture current IDE state immediately (for manual analyze command). */
   captureNow(): ContextSnapshot {
     return this.capture();
+  }
+
+  private async initAndCapture(): Promise<void> {
+    await Promise.all([this.detectAiInstructionFiles(), this.detectIgnoreFiles()]);
+    this.captureAndEmit();
   }
 
   private scheduleUpdate(): void {

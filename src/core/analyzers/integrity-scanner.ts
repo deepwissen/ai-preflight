@@ -25,11 +25,21 @@ const SUSPICIOUS_PATTERNS = [
   /\[]\(https?:\/\/[^)]+\)/, // hidden markdown links
 ];
 
+/** Severity by issue category (security-informed). */
+const ISSUE_SEVERITY: Record<string, InstructionFileIssue["severity"]> = {
+  "suspicious-instruction": "warning", // unambiguous attack pattern
+  "bidi-override": "warning", // high risk, rarely legitimate
+  "hidden-unicode": "info", // could be accidental encoding issue
+};
+
 /**
  * Scans instruction file content for integrity issues:
  * - Hidden unicode characters
  * - Bidi override characters
  * - Suspicious prompt injection patterns
+ *
+ * When multiple categories fire on the same line, the findings are
+ * elevated to "error" severity (compound attack detection).
  *
  * Runs after detectWaste, before scoreRisk.
  */
@@ -43,9 +53,30 @@ export function scanInstructionIntegrity(
   for (const file of context.aiInstructionFiles) {
     if (!file.content) continue;
 
-    scanHiddenUnicode(file.path, file.content, wastePatterns, instructionFileIssues);
-    scanBidiOverrides(file.path, file.content, wastePatterns, instructionFileIssues);
-    scanSuspiciousInstructions(file.path, file.content, wastePatterns, instructionFileIssues);
+    const issuesBefore = instructionFileIssues.length;
+    scanHiddenUnicode(file.path, file.content, instructionFileIssues);
+    scanBidiOverrides(file.path, file.content, instructionFileIssues);
+    scanSuspiciousInstructions(file.path, file.content, instructionFileIssues);
+
+    // Compound attack detection: multiple categories on the same line
+    const fileIssues = instructionFileIssues.slice(issuesBefore);
+    if (fileIssues.length >= 2) {
+      const byLine = new Map<number, InstructionFileIssue[]>();
+      for (const issue of fileIssues) {
+        if (issue.lineNumber == null) continue;
+        const group = byLine.get(issue.lineNumber) ?? [];
+        group.push(issue);
+        byLine.set(issue.lineNumber, group);
+      }
+      for (const [, group] of byLine) {
+        if (group.length >= 2) {
+          for (const issue of group) {
+            issue.severity = "error";
+            issue.description += " [compound attack — multiple techniques on same line]";
+          }
+        }
+      }
+    }
   }
 
   return {
@@ -57,7 +88,6 @@ export function scanInstructionIntegrity(
 function scanHiddenUnicode(
   filePath: string,
   content: string,
-  wastePatterns: WastePattern[],
   issues: InstructionFileIssue[]
 ): void {
   const lines = content.split("\n");
@@ -77,7 +107,6 @@ function scanHiddenUnicode(
         `U+${codePoint}`,
         `Hidden unicode character (U+${codePoint}) in ${fileName(filePath)} line ${i + 1}`,
         "Remove hidden unicode characters — they may be used to hide malicious instructions",
-        wastePatterns,
         issues
       );
       return; // One finding per category per file
@@ -95,7 +124,6 @@ function scanHiddenUnicode(
         `U+${codePoint}`,
         `Hidden tag character (U+${codePoint}) in ${fileName(filePath)} line ${i + 1}`,
         "Remove hidden unicode characters — they may be used to hide malicious instructions",
-        wastePatterns,
         issues
       );
       return;
@@ -116,7 +144,6 @@ function scanHiddenUnicode(
           "U+FEFF",
           `Hidden BOM character in ${fileName(filePath)} line ${i + 1}`,
           "Remove hidden unicode characters — they may be used to hide malicious instructions",
-          wastePatterns,
           issues
         );
         return;
@@ -128,7 +155,6 @@ function scanHiddenUnicode(
 function scanBidiOverrides(
   filePath: string,
   content: string,
-  wastePatterns: WastePattern[],
   issues: InstructionFileIssue[]
 ): void {
   const lines = content.split("\n");
@@ -145,7 +171,6 @@ function scanBidiOverrides(
         `U+${codePoint}`,
         `Bidi override character (U+${codePoint}) in ${fileName(filePath)} line ${i + 1}`,
         "Remove bidi override characters — they can visually hide malicious instructions",
-        wastePatterns,
         issues
       );
       return; // One finding per category per file
@@ -156,7 +181,6 @@ function scanBidiOverrides(
 function scanSuspiciousInstructions(
   filePath: string,
   content: string,
-  wastePatterns: WastePattern[],
   issues: InstructionFileIssue[]
 ): void {
   const lines = content.split("\n");
@@ -172,16 +196,12 @@ function scanSuspiciousInstructions(
           match[0],
           `Suspicious instruction "${match[0]}" in ${fileName(filePath)} line ${i + 1}`,
           "Review this instruction — it may be a prompt injection attempt",
-          wastePatterns,
           issues
         );
         return; // One finding per category per file
       }
     }
   }
-
-  // Also check multiline patterns (hidden markdown links can be on any line)
-  // The per-line check above already handles this since our patterns work per-line
 }
 
 function addIssue(
@@ -191,21 +211,13 @@ function addIssue(
   matchedText: string,
   description: string,
   suggestion: string,
-  wastePatterns: WastePattern[],
   issues: InstructionFileIssue[]
 ): void {
-  wastePatterns.push({
-    ruleId: issue,
-    source: filePath,
-    description,
-    severity: issue === "suspicious-instruction" ? "info" : "warning",
-    suggestion,
-  });
-
   issues.push({
     id: `integrity-${issue}-${filePath}`,
     filePath,
     issue,
+    severity: ISSUE_SEVERITY[issue] ?? "info",
     lineNumber,
     matchedText,
     description,

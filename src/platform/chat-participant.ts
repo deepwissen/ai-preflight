@@ -177,6 +177,27 @@ function renderResponse(
     }
   }
 
+  // Integrity alerts (security issues in instruction files)
+  const integrityIssues = result.instructionFileIssues.filter(
+    (i) =>
+      i.issue === "hidden-unicode" ||
+      i.issue === "bidi-override" ||
+      i.issue === "suspicious-instruction"
+  );
+  if (integrityIssues.length > 0) {
+    response.markdown("### Integrity Alerts\n");
+    for (const issue of integrityIssues) {
+      const icon =
+        issue.severity === "error"
+          ? "$(error)"
+          : issue.severity === "warning"
+            ? "$(warning)"
+            : "$(info)";
+      response.markdown(`- ${icon} **${issue.issue}:** ${issue.description}\n`);
+    }
+    response.markdown("\n");
+  }
+
   // Positive signals
   if (result.positiveSignals.length > 0) {
     response.markdown("### What's Working\n");
