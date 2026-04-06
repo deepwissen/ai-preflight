@@ -43,6 +43,13 @@ export class ContextBridge {
           this.scheduleUpdate();
         }
       }),
+      // Re-scan instruction files when they are saved (content may have changed)
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        const relativePath = vscode.workspace.asRelativePath(doc.uri);
+        if (this.isInstructionFile(relativePath)) {
+          void this.initAndCapture();
+        }
+      }),
       // Outcome intelligence: track undo and repeated-edit signals
       vscode.workspace.onDidChangeTextDocument((e) => {
         // Detect undo operations
@@ -247,6 +254,22 @@ export class ContextBridge {
       }
     }
     this.aiInstructionFilesCache = files;
+  }
+
+  /** Quick check whether a relative path matches a known instruction file pattern. */
+  private isInstructionFile(relativePath: string): boolean {
+    const name = relativePath.split("/").pop() ?? "";
+    const knownNames = [
+      ".cursorrules",
+      "copilot-instructions.md",
+      "CLAUDE.md",
+      ".windsurfrules",
+      "GEMINI.md",
+    ];
+    if (knownNames.includes(name)) return true;
+    if (relativePath.includes(".cursor/rules/")) return true;
+    if (relativePath.includes(".amazonq/rules/")) return true;
+    return false;
   }
 
   private async detectIgnoreFiles(): Promise<void> {
