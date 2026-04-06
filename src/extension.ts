@@ -4,6 +4,7 @@ import { runPipeline } from "./core/pipeline.js";
 import {
   estimateTokens,
   detectWaste,
+  scanInstructionIntegrity,
   scoreRisk,
   detectPositiveSignals,
   detectToolAwareIssues,
@@ -50,6 +51,7 @@ function activateInternal(context: vscode.ExtensionContext): void {
   const pipelineSteps: AnalyzerStep[] = [
     estimateTokens,
     detectWaste,
+    scanInstructionIntegrity,
     scoreRisk,
     detectPositiveSignals,
     detectToolAwareIssues,

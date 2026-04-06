@@ -35,13 +35,19 @@ export class ContextBridge {
       vscode.window.onDidChangeTextEditorSelection(() => this.scheduleUpdate()),
       vscode.window.tabGroups.onDidChangeTabs(() => this.scheduleUpdate()),
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
-        void this.detectAiInstructionFiles();
-        void this.detectIgnoreFiles();
+        void this.initAndCapture();
       }),
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("ai-preflight")) {
           this.resolveToolProfile();
           this.scheduleUpdate();
+        }
+      }),
+      // Re-scan instruction files when they are saved (content may have changed)
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        const relativePath = vscode.workspace.asRelativePath(doc.uri);
+        if (this.isInstructionFile(relativePath)) {
+          void this.initAndCapture();
         }
       }),
       // Outcome intelligence: track undo and repeated-edit signals
@@ -79,12 +85,10 @@ export class ContextBridge {
     // Resolve tool profile from settings
     this.resolveToolProfile();
 
-    // Detect AI instruction files and ignore files (cached, refreshed on workspace folder change)
-    void this.detectAiInstructionFiles();
-    void this.detectIgnoreFiles();
-
-    // Initial capture
-    this.captureAndEmit();
+    // Detect AI instruction files and ignore files, then capture.
+    // Awaiting ensures the first snapshot includes instruction file content
+    // so integrity findings are reflected in the initial risk level.
+    void this.initAndCapture();
   }
 
   /** Stop listening and clean up. */
@@ -97,6 +101,11 @@ export class ContextBridge {
   /** Capture current IDE state immediately (for manual analyze command). */
   captureNow(): ContextSnapshot {
     return this.capture();
+  }
+
+  private async initAndCapture(): Promise<void> {
+    await Promise.all([this.detectAiInstructionFiles(), this.detectIgnoreFiles()]);
+    this.captureAndEmit();
   }
 
   private scheduleUpdate(): void {
@@ -229,19 +238,38 @@ export class ContextBridge {
         for (const uri of found) {
           const relativePath = vscode.workspace.asRelativePath(uri);
           let lineCount = 0;
+          let content: string | undefined;
           try {
             const doc = await vscode.workspace.openTextDocument(uri);
             lineCount = doc.lineCount;
+            const text = doc.getText();
+            if (text.length <= 50_000) content = text;
           } catch {
             // File may not be readable
           }
-          files.push({ path: relativePath, lineCount, toolId });
+          files.push({ path: relativePath, lineCount, toolId, content });
         }
       } catch (err) {
         console.warn(`[AI Preflight] Failed to search for ${pattern}:`, err);
       }
     }
     this.aiInstructionFilesCache = files;
+  }
+
+  /** Quick check whether a relative path matches a known instruction file pattern. */
+  private isInstructionFile(relativePath: string): boolean {
+    const name = relativePath.split("/").pop() ?? "";
+    const knownNames = [
+      ".cursorrules",
+      "copilot-instructions.md",
+      "CLAUDE.md",
+      ".windsurfrules",
+      "GEMINI.md",
+    ];
+    if (knownNames.includes(name)) return true;
+    if (relativePath.includes(".cursor/rules/")) return true;
+    if (relativePath.includes(".amazonq/rules/")) return true;
+    return false;
   }
 
   private async detectIgnoreFiles(): Promise<void> {
