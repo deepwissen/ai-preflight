@@ -1221,4 +1221,139 @@ describe("detectWaste", () => {
     expect(ruleIds).not.toContain("language-mismatch");
   });
 
+  // ─── P1: Extended sensitive file patterns ─────────────────────
+
+  it("detects .tfstate file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "terraform.tfstate",
+        languageId: "json",
+        lineCount: 500,
+        charCount: 20000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .tfstate.backup file", () => {
+    const snapshot = makeSnapshot({
+      openTabs: [
+        makeFile({
+          path: "terraform.tfstate.backup",
+          languageId: "json",
+          lineCount: 500,
+          charCount: 20000,
+        }),
+      ],
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .git-credentials file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: ".git-credentials",
+        languageId: "plaintext",
+        lineCount: 3,
+        charCount: 100,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .crt certificate file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "server.crt",
+        languageId: "plaintext",
+        lineCount: 20,
+        charCount: 1000,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects .csr certificate request file", () => {
+    const snapshot = makeSnapshot({
+      openTabs: [
+        makeFile({
+          path: "server.csr",
+          languageId: "plaintext",
+          lineCount: 15,
+          charCount: 800,
+        }),
+      ],
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  it("detects kubeconfig file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "kubeconfig",
+        languageId: "yaml",
+        lineCount: 30,
+        charCount: 1500,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).toContain("sensitive-file");
+  });
+
+  // ─── P2: docker-compose false positive fix ────────────────────
+
+  it("does NOT trigger sensitive-file for docker-compose.example.yml", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "docker-compose.example.yml",
+        languageId: "yaml",
+        lineCount: 30,
+        charCount: 1200,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).not.toContain("sensitive-file");
+  });
+
+  it("does NOT trigger sensitive-file for docker-compose.sample.yml", () => {
+    const snapshot = makeSnapshot({
+      openTabs: [
+        makeFile({
+          path: "docker-compose.sample.yml",
+          languageId: "yaml",
+          lineCount: 30,
+          charCount: 1200,
+        }),
+      ],
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).not.toContain("sensitive-file");
+  });
+
 });

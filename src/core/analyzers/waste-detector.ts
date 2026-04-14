@@ -17,10 +17,11 @@ const LOCK_FILE_PATTERNS =
   /^(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Gemfile\.lock|Cargo\.lock|poetry\.lock|composer\.lock)$/;
 const ENV_FILE_PATTERNS = /^\.env(\.local|\.development|\.production|\.staging|\.test)?$/;
 const SENSITIVE_FILE_PATTERNS =
-  /^(id_rsa|id_ed25519|id_ecdsa|id_dsa)(\.pub)?$|\.pem$|\.key$|\.p12$|\.pfx$|\.jks$/;
+  /^(id_rsa|id_ed25519|id_ecdsa|id_dsa)(\.pub)?$|\.pem$|\.key$|\.p12$|\.pfx$|\.jks$|\.crt$|\.csr$/;
 const CREDENTIAL_FILE_PATTERNS =
-  /^(credentials\.json|serviceAccountKey\.json|service[-_]?account[-_]?key\.json|gcloud[-_]?credentials\.json|firebase[-_]?adminsdk.*\.json|\.npmrc|\.pypirc|\.netrc)$/;
-const DOCKER_COMPOSE_PATTERNS = /^docker-compose(\.[\w.-]+)?\.ya?ml$/;
+  /^(credentials\.json|serviceAccountKey\.json|service[-_]?account[-_]?key\.json|gcloud[-_]?credentials\.json|firebase[-_]?adminsdk.*\.json|\.npmrc|\.pypirc|\.netrc|\.git-credentials)$/;
+const INFRA_STATE_PATTERNS = /\.tfstate(\.backup)?$|^kubeconfig$/;
+const DOCKER_COMPOSE_PATTERNS = /^docker-compose(\.[\w.-]+)?\.ya?ml$/i;
 const TEST_FILE_PATTERNS = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
 const DATA_FILE_PATTERNS = /\.(csv|tsv|json|xml|yaml|yml|sql)$/;
 
@@ -135,13 +136,14 @@ export function detectWaste(
     });
   }
 
-  // Rule: Sensitive file open (SSH keys, PEM files, credentials)
+  // Rule: Sensitive file open (SSH keys, PEM files, credentials, infra state)
   const isSensitiveFile = (path: string) => {
     const name = fileName(path);
     return (
       SENSITIVE_FILE_PATTERNS.test(name) ||
       CREDENTIAL_FILE_PATTERNS.test(name) ||
-      DOCKER_COMPOSE_PATTERNS.test(name)
+      INFRA_STATE_PATTERNS.test(name) ||
+      (DOCKER_COMPOSE_PATTERNS.test(name) && !/\.example\./.test(name) && !/\.sample\./.test(name))
     );
   };
   const sensitiveFileInTabs = context.openTabs.find((t) => isSensitiveFile(t.path));

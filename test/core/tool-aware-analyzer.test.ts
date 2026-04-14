@@ -799,6 +799,37 @@ describe("detectToolAwareIssues", () => {
     });
   });
 
+  // ─── F10 + F11 coexistence ─────────────────────────────────────
+
+  describe("F10+F11: coexistence", () => {
+    it("F10 and F11 fire together without conflict", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: { toolId: "amazon-q", detectedVia: "setting" },
+          aiInstructionFiles: [makeInstruction(".amazonq/rules/main", 20, "amazon-q")],
+        }),
+        {
+          tokenEstimate: { low: 55000, high: 60000, band: "high", confidence: "medium" },
+          wastePatterns: [
+            { ruleId: "env-file", source: ".env", description: ".env detected", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+      expect(ruleIds).toContain("injection-surface");
+      expect(ruleIds).toContain("data-flow-warning");
+
+      const suggestionIds = result.suggestions!.map((s) => s.id);
+      expect(suggestionIds).toContain("review-injection-surface");
+      expect(suggestionIds).toContain("data-flow-warning");
+
+      // Verify no duplicate priorities
+      const priorities = result.suggestions!.map((s) => s.priority);
+      expect(new Set(priorities).size).toBe(priorities.length);
+    });
+  });
+
   // ─── F8: Context Gap Detection ──────────────────────────────────
 
   describe("F8: Context gap detection", () => {
