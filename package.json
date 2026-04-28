@@ -2,7 +2,7 @@
   "name": "ai-preflight",
   "displayName": "AI Preflight",
   "description": "Context observability and optimization for AI-assisted development. See what context your AI tools are using, estimate prompt size, and get suggestions to improve AI responses.",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "publisher": "KiranChanda",
   "license": "MIT",
   "repository": {
