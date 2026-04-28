@@ -40,7 +40,9 @@ export function scoreRisk(
 
   // Security-sensitive rules independently escalate risk
   const SECURITY_RULES = new Set(["sensitive-file", "env-file"]);
-  const hasSecurityWaste = (partial.wastePatterns ?? []).some((wp) => SECURITY_RULES.has(wp.ruleId));
+  const hasSecurityWaste = (partial.wastePatterns ?? []).some((wp) =>
+    SECURITY_RULES.has(wp.ruleId)
+  );
   if (hasSecurityWaste && riskLevel === "low") {
     riskLevel = "medium";
   }
