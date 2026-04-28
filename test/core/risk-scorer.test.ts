@@ -19,7 +19,6 @@ function makeSnapshot(): ContextSnapshot {
     aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
     toolProfile: null,
     ignoreFiles: [],
-    activeFileTestPairs: [],
   };
 }
 
@@ -113,6 +112,45 @@ describe("scoreRisk", () => {
     expect(result.riskLevel).toBeUndefined();
   });
 
+  // ─── Security-sensitive rule escalation ──────────────────────
+
+  it("sensitive-file independently escalates LOW to MEDIUM", () => {
+    const result = scoreRisk(makeSnapshot(), {
+      ...makePartial("low", 0),
+      wastePatterns: [
+        {
+          ruleId: "sensitive-file",
+          source: "id_rsa",
+          description: "SSH key open",
+          severity: "warning" as const,
+          suggestion: "Close",
+        },
+      ],
+    });
+    expect(result.riskLevel).toBe("medium");
+  });
+
+  it("env-file independently escalates LOW to MEDIUM", () => {
+    const result = scoreRisk(makeSnapshot(), {
+      ...makePartial("low", 0),
+      wastePatterns: [
+        {
+          ruleId: "env-file",
+          source: ".env",
+          description: ".env open",
+          severity: "warning" as const,
+          suggestion: "Close",
+        },
+      ],
+    });
+    expect(result.riskLevel).toBe("medium");
+  });
+
+  it("non-security waste alone on LOW stays at MEDIUM (normal escalation)", () => {
+    const result = scoreRisk(makeSnapshot(), makePartial("low", 1));
+    expect(result.riskLevel).toBe("medium");
+  });
+
   // ─── Integrity-based floor ─────────────────────────────────────
 
   it("error integrity finding raises LOW to HIGH", () => {
@@ -164,8 +202,6 @@ describe("scoreRisk", () => {
   });
 
   it("error overrides waste-based MEDIUM (compound attack scenario)", () => {
-    // Band is low, no waste → would stay LOW
-    // But error integrity finding → HIGH
     const result = scoreRisk(
       makeSnapshot(),
       makePartial("low", 0, [makeIntegrityIssue("error")])

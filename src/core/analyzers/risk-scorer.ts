@@ -12,6 +12,9 @@ import type { AnalysisResult, ContextSnapshot, RiskLevel } from "../types.js";
  *   - waste >= 2  AND band is MEDIUM → bump to HIGH
  *   - HIGH stays HIGH regardless
  *
+ *   Security-sensitive waste (independent escalation):
+ *   - sensitive-file or env-file on LOW → at least MEDIUM
+ *
  *   Integrity-based (minimum floor):
  *   - any integrity finding with severity "error"   → at least HIGH
  *   - any integrity finding with severity "warning"  → at least MEDIUM
@@ -33,6 +36,15 @@ export function scoreRisk(
     riskLevel = "medium";
   } else if (band === "medium" && wasteCount >= 2) {
     riskLevel = "high";
+  }
+
+  // Security-sensitive rules independently escalate risk
+  const SECURITY_RULES = new Set(["sensitive-file", "env-file"]);
+  const hasSecurityWaste = (partial.wastePatterns ?? []).some((wp) =>
+    SECURITY_RULES.has(wp.ruleId)
+  );
+  if (hasSecurityWaste && riskLevel === "low") {
+    riskLevel = "medium";
   }
 
   // Integrity-based floor — severity drives minimum risk level

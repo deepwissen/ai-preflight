@@ -109,12 +109,15 @@ function getTopReason(result: AnalysisResult): string | undefined {
       "large-file": "large file open",
       "lock-file": "lock file open",
       "env-file": "env file open",
+      "sensitive-file": "sensitive file open",
       "generated-file": "generated file open",
       "too-many-tabs": `${result.contextSummary.openTabCount} tabs open`,
       "data-file": "data file open",
       "no-selection-large-file": "no selection on large file",
-      "conflict-markers": "conflict markers",
+      "git-conflict-markers": "conflict markers",
+      "unsaved-file": "unsaved changes",
       "truncation-risk": "near context limit",
+      "data-flow-warning": "sensitive data in context",
     };
     return reasons[warning.ruleId] ?? warning.ruleId;
   }

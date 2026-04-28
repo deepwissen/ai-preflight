@@ -15,6 +15,7 @@ export interface AiToolModel {
 export interface AiToolDefinition {
   id: AiToolId;
   displayName: string;
+  provider: string;
   contextWindowTokens: number;
   instructionFiles: string[];
   ignoreFiles: string[];
@@ -26,6 +27,7 @@ export const AI_TOOLS: Record<AiToolId, AiToolDefinition> = {
   "claude-code": {
     id: "claude-code",
     displayName: "Claude Code",
+    provider: "Anthropic",
     contextWindowTokens: 150_000,
     instructionFiles: ["CLAUDE.md"],
     ignoreFiles: [".claudeignore"],
@@ -39,6 +41,7 @@ export const AI_TOOLS: Record<AiToolId, AiToolDefinition> = {
   cursor: {
     id: "cursor",
     displayName: "Cursor",
+    provider: "Anysphere",
     contextWindowTokens: 200_000,
     instructionFiles: [".cursorrules", ".cursor/rules"],
     ignoreFiles: [".cursorignore"],
@@ -47,6 +50,7 @@ export const AI_TOOLS: Record<AiToolId, AiToolDefinition> = {
   copilot: {
     id: "copilot",
     displayName: "GitHub Copilot",
+    provider: "Microsoft/GitHub",
     contextWindowTokens: 115_000,
     instructionFiles: [".github/copilot-instructions.md"],
     ignoreFiles: [],
@@ -60,6 +64,7 @@ export const AI_TOOLS: Record<AiToolId, AiToolDefinition> = {
   windsurf: {
     id: "windsurf",
     displayName: "Windsurf",
+    provider: "Codeium",
     contextWindowTokens: 120_000,
     instructionFiles: [".windsurfrules"],
     ignoreFiles: [".codeiumignore"],
@@ -68,6 +73,7 @@ export const AI_TOOLS: Record<AiToolId, AiToolDefinition> = {
   "amazon-q": {
     id: "amazon-q",
     displayName: "Amazon Q",
+    provider: "AWS",
     contextWindowTokens: 75_000,
     instructionFiles: [".amazonq/rules"],
     ignoreFiles: [],
@@ -76,6 +82,7 @@ export const AI_TOOLS: Record<AiToolId, AiToolDefinition> = {
   gemini: {
     id: "gemini",
     displayName: "Gemini",
+    provider: "Google",
     contextWindowTokens: 1_000_000,
     instructionFiles: ["GEMINI.md"],
     ignoreFiles: [],
@@ -84,6 +91,7 @@ export const AI_TOOLS: Record<AiToolId, AiToolDefinition> = {
   chatgpt: {
     id: "chatgpt",
     displayName: "ChatGPT",
+    provider: "OpenAI",
     contextWindowTokens: 127_000,
     instructionFiles: [],
     ignoreFiles: [],

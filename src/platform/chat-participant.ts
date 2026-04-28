@@ -83,7 +83,13 @@ export function registerChatParticipant(
   context.subscriptions.push(participant);
 }
 
-const CLOSEABLE_WASTE_RULES = new Set(["lock-file", "env-file", "data-file", "generated-file"]);
+const CLOSEABLE_WASTE_RULES = new Set([
+  "lock-file",
+  "env-file",
+  "data-file",
+  "generated-file",
+  "sensitive-file",
+]);
 
 function collectWasteTabPaths(wastePatterns: WastePattern[], extraPaths?: string[]): string[] {
   const paths = new Set<string>();

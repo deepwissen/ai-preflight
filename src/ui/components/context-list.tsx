@@ -6,7 +6,13 @@ const INTEGRITY_ISSUES = new Set<InstructionFileIssue["issue"]>([
   "suspicious-instruction",
 ]);
 
-const CLOSEABLE_WASTE_RULES = new Set(["lock-file", "env-file", "data-file", "generated-file"]);
+const CLOSEABLE_WASTE_RULES = new Set([
+  "lock-file",
+  "env-file",
+  "data-file",
+  "generated-file",
+  "sensitive-file",
+]);
 
 interface Props {
   result: AnalysisResult;
