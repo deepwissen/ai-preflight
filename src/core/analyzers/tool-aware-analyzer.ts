@@ -477,7 +477,10 @@ function checkDataFlow(
 
   const tokenEst = partial.tokenEstimate;
   const tokenLabel = tokenEst
-    ? `~${Math.round((tokenEst.low + tokenEst.high) / 2 / 1000)}k tokens`
+    ? (() => {
+        const mid = Math.round((tokenEst.low + tokenEst.high) / 2);
+        return mid >= 1000 ? `~${Math.round(mid / 1000)}k tokens` : `~${mid} tokens`;
+      })()
     : "unknown size";
 
   wastePatterns.push({

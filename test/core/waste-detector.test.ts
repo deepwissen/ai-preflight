@@ -1356,4 +1356,20 @@ describe("detectWaste", () => {
     expect(ruleIds).not.toContain("sensitive-file");
   });
 
+  it("does NOT trigger sensitive-file for docker-compose.override.yml", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({
+        path: "docker-compose.override.yml",
+        languageId: "yaml",
+        lineCount: 20,
+        charCount: 800,
+        isActive: true,
+      }),
+    });
+
+    const result = detectWaste(snapshot, {});
+    const ruleIds = result.wastePatterns!.map((w) => w.ruleId);
+    expect(ruleIds).not.toContain("sensitive-file");
+  });
+
 });

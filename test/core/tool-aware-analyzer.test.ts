@@ -21,7 +21,6 @@ function makeSnapshot(overrides: Partial<ContextSnapshot> = {}): ContextSnapshot
     aiInstructionFiles: [],
     toolProfile: null,
     ignoreFiles: [],
-    activeFileTestPairs: [],
     ...overrides,
   };
 }
@@ -760,6 +759,25 @@ describe("detectToolAwareIssues", () => {
       const wp = result.wastePatterns!.find((w) => w.ruleId === "data-flow-warning");
       expect(wp).toBeDefined();
       expect(wp!.description).toContain("Anysphere");
+    });
+
+    it("shows exact count below 1k instead of '~0k tokens'", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: cursorProfile(),
+        }),
+        {
+          tokenEstimate: { low: 100, high: 300, band: "low", confidence: "low" },
+          wastePatterns: [
+            { ruleId: "env-file", source: ".env", description: ".env detected", severity: "warning", suggestion: "Close" },
+          ],
+        }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "data-flow-warning");
+      expect(wp).toBeDefined();
+      expect(wp!.description).toContain("~200 tokens");
+      expect(wp!.description).not.toContain("0k");
     });
 
     it("shows 'unknown size' when no token estimate", () => {

@@ -143,7 +143,10 @@ export function detectWaste(
       SENSITIVE_FILE_PATTERNS.test(name) ||
       CREDENTIAL_FILE_PATTERNS.test(name) ||
       INFRA_STATE_PATTERNS.test(name) ||
-      (DOCKER_COMPOSE_PATTERNS.test(name) && !/\.example\./.test(name) && !/\.sample\./.test(name))
+      (DOCKER_COMPOSE_PATTERNS.test(name) &&
+        !/\.example\./.test(name) &&
+        !/\.sample\./.test(name) &&
+        !/\.override\./.test(name))
     );
   };
   const sensitiveFileInTabs = context.openTabs.find((t) => isSensitiveFile(t.path));
