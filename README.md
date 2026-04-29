@@ -61,6 +61,46 @@ Returns:
   - **Content matches** — files containing your prompt keywords
   - Results are ranked by relevance and grouped into **strongly related** and **possibly related** with actionable tips
 
+### Security: Sensitive File Detection
+
+Detects 30+ file patterns that may contain secrets or private keys — and warns before they're sent to AI:
+
+| Category | Patterns Detected |
+|----------|------------------|
+| **SSH Keys** | `id_rsa`, `id_ed25519`, `id_ecdsa`, `id_dsa` (and `.pub` variants) |
+| **Certificates** | `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.crt`, `.csr` |
+| **Credentials** | `credentials.json`, `serviceAccountKey.json`, `firebase-adminsdk*.json`, `.npmrc`, `.pypirc`, `.netrc`, `.git-credentials` |
+| **Infrastructure** | `terraform.tfstate`, `kubeconfig` |
+| **Environment** | `.env`, `.env.local`, `.env.production`, etc. |
+| **Docker Compose** | `docker-compose.yml` (excludes `.example`, `.sample`, `.override` variants) |
+
+### Security: Data Flow Transparency
+
+When sensitive files are detected, AI Preflight tells you **which company** will receive your data and **how much**:
+
+```
+⚠ Sensitive files in context (~15k tokens) will be sent to Anysphere (Cursor)
+```
+
+| AI Tool | Provider Shown |
+|---------|---------------|
+| Claude Code | Anthropic |
+| Cursor | Anysphere |
+| GitHub Copilot | Microsoft/GitHub |
+| Windsurf | Codeium |
+| Amazon Q | AWS |
+| Gemini | Google |
+| ChatGPT | OpenAI |
+
+### Security: Integrity Scanner
+
+Scans AI instruction files (`.cursorrules`, `CLAUDE.md`, etc.) for supply-chain attacks:
+
+- **Hidden unicode** — zero-width characters used to hide malicious instructions
+- **Bidirectional overrides** — text reordering attacks (CVE-2021-42574)
+- **Prompt injection** — "ignore previous instructions", role hijacking, data exfiltration patterns
+- **Compound attack detection** — multiple techniques on same line auto-escalated to error severity
+
 ### Tool-Aware Analysis
 
 Auto-detects which AI tool you're using and adapts analysis:
@@ -71,20 +111,22 @@ Auto-detects which AI tool you're using and adapts analysis:
 - **Ignore file checks** — missing `.cursorignore`, `.copilotignore`, etc.
 - **Tab suppression** — skips tab-related warnings for tools that don't use tabs as context
 - **Truncation risk** — warns when context is likely to be cut off
+- **Injection surface warning** — alerts when large context + instruction files increase attack surface
 
 ### Waste Detection
 
-17 rules that run automatically on every context change:
+20+ rules that run automatically on every context change:
 
 | Category | Examples |
 |----------|----------|
-| **High severity** | Lock files open, `.env` files (security risk), generated files, files > 1,000 lines |
+| **Security** | Sensitive files (SSH keys, certs, credentials), `.env` files, data flow warnings |
+| **High severity** | Lock files open, generated files, files > 1,000 lines |
 | **Medium severity** | Too many tabs (10+), tabs spanning unrelated modules, no selection on large files, unsaved changes |
 | **Low severity** | High comment ratio, duplicate tabs, merge conflict markers, language mismatch, mixed test + production files |
 
 ### 1-Click Fixes
 
-Many suggestions include an executable action — close unrelated tabs, save the file, create a missing `.cursorrules`, select the current function instead of the whole file, and more. One click, problem solved.
+Many suggestions include an executable action — close sensitive files, close unrelated tabs, save the file, create a missing `.cursorrules`, select the current function instead of the whole file, and more. One click, problem solved.
 
 ### Outcome Intelligence
 
