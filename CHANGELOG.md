@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0
+
+### Added
+
+- **Path-based sensitive directory detection** — detects cloud CLI config directories that contain real credentials regardless of filename:
+  - AWS: `.aws/credentials`, `.aws/config`, `.aws/cli/cache/*.json` (STS tokens)
+  - Azure: `.azure/accessTokens.json`, `.azure/azureProfile.json`
+  - Docker: `.docker/config.json` (registry auth tokens)
+  - Kubernetes: `.kube/config` (cluster credentials)
+  - GCP: `.config/gcloud/application_default_credentials.json`, `.config/gcloud/credentials.db`
+  - SSH: `.ssh/config`
+- **Framework config detection** — detects application config files where secrets commonly end up:
+  - Spring Boot: `application.properties`, `application.yml`
+  - .NET: `appsettings.json`, `appsettings.Production.json` (and all environment variants)
+  - WordPress: `wp-config.php`
+  - Rails/Ansible: `secrets.yml`, `vault.yml`
+  - Apache: `.htpasswd`
+  - AWS CLI: `accessKeys.csv`, `.boto`, `.s3cfg`
+
+### Changed
+
+- Sensitive file detection expanded from 38 to 60+ patterns across three detection layers (filename, directory path, framework config)
+
 ## 0.4.0
 
 ### Added
