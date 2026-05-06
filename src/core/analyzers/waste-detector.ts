@@ -25,6 +25,15 @@ const DOCKER_COMPOSE_PATTERNS = /^docker-compose(\.[\w.-]+)?\.ya?ml$/i;
 const TEST_FILE_PATTERNS = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
 const DATA_FILE_PATTERNS = /\.(csv|tsv|json|xml|yaml|yml|sql)$/;
 
+// Path-based sensitive directory detection — matches against the full workspace-relative path.
+// These directories contain credentials regardless of individual filenames.
+const SENSITIVE_PATH_PATTERNS =
+  /(^|\/)\.aws\/(credentials|config|cli\/cache\/.*\.json)$|(^|\/)\.azure\/(accessTokens\.json|azureProfile\.json)$|(^|\/)\.docker\/config\.json$|(^|\/)\.kube\/config$|(^|\/)\.config\/gcloud\/(application_default_credentials\.json|credentials\.db|properties)$|(^|\/)\.ssh\/config$/;
+
+// Additional sensitive filenames not covered by SENSITIVE_FILE_PATTERNS
+const SENSITIVE_EXTRA_NAMES =
+  /^(accessKeys\.csv|\.boto|\.s3cfg|\.env\.vault|secrets\.ya?ml|vault\.ya?ml|\.htpasswd|wp-config\.php|application\.properties|application\.ya?ml|appsettings\.json|appsettings\..*\.json)$/;
+
 /**
  * Detects common patterns that waste tokens or degrade AI responses.
  * Rule-based — no ML. Each rule is transparent and configurable.
@@ -136,13 +145,15 @@ export function detectWaste(
     });
   }
 
-  // Rule: Sensitive file open (SSH keys, PEM files, credentials, infra state)
+  // Rule: Sensitive file open (SSH keys, PEM files, credentials, infra state, cloud config dirs)
   const isSensitiveFile = (path: string) => {
     const name = fileName(path);
     return (
       SENSITIVE_FILE_PATTERNS.test(name) ||
       CREDENTIAL_FILE_PATTERNS.test(name) ||
       INFRA_STATE_PATTERNS.test(name) ||
+      SENSITIVE_EXTRA_NAMES.test(name) ||
+      SENSITIVE_PATH_PATTERNS.test(path) ||
       (DOCKER_COMPOSE_PATTERNS.test(name) &&
         !/\.example\./.test(name) &&
         !/\.sample\./.test(name) &&

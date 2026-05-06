@@ -1372,4 +1372,230 @@ describe("detectWaste", () => {
     expect(ruleIds).not.toContain("sensitive-file");
   });
 
+  // ─── Path-based sensitive directory detection ──────────────────
+
+  // AWS
+  it("detects .aws/credentials", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".aws/credentials", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects .aws/config", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".aws/config", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects .aws/cli/cache/*.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".aws/cli/cache/abc123def.json", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects .aws/credentials in nested workspace path", () => {
+    const snapshot = makeSnapshot({
+      openTabs: [makeFile({ path: "home/user/.aws/credentials" })],
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  // Azure
+  it("detects .azure/accessTokens.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".azure/accessTokens.json", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects .azure/azureProfile.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".azure/azureProfile.json", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  // Docker
+  it("detects .docker/config.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".docker/config.json", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  // Kubernetes
+  it("detects .kube/config", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".kube/config", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  // GCP
+  it("detects .config/gcloud/application_default_credentials.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".config/gcloud/application_default_credentials.json", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects .config/gcloud/credentials.db", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".config/gcloud/credentials.db", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  // SSH config
+  it("detects .ssh/config", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".ssh/config", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  // Extra sensitive filenames
+  it("detects accessKeys.csv", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "accessKeys.csv", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects .boto", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".boto", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects .s3cfg", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".s3cfg", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects secrets.yml", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "secrets.yml", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects secrets.yaml", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "secrets.yaml", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects vault.yml", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "vault.yml", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects .htpasswd", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: ".htpasswd", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects wp-config.php", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "wp-config.php", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects application.properties", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "application.properties", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects application.yml", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "application.yml", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects appsettings.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "appsettings.json", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  it("detects appsettings.Production.json", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "appsettings.Production.json", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("sensitive-file");
+  });
+
+  // False positive tests for path-based detection
+  it("does NOT trigger for normal .aws/ source code directory", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "src/aws/lambda-handler.ts", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).not.toContain("sensitive-file");
+  });
+
+  it("does NOT trigger for normal config.ts file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "src/config.ts", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).not.toContain("sensitive-file");
+  });
+
+  it("does NOT trigger for application.ts source file", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "src/application.ts", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).not.toContain("sensitive-file");
+  });
+
+  it("does NOT trigger for secrets.test.ts", () => {
+    const snapshot = makeSnapshot({
+      activeFile: makeFile({ path: "test/secrets.test.ts", isActive: true }),
+    });
+    const result = detectWaste(snapshot, {});
+    expect(result.wastePatterns!.map((w) => w.ruleId)).not.toContain("sensitive-file");
+  });
+
 });
