@@ -204,6 +204,17 @@ function renderResponse(
     response.markdown("\n");
   }
 
+  // Secrets detected in file content
+  if (result.secretFindings && result.secretFindings.length > 0) {
+    response.markdown("### Secrets Detected\n");
+    for (const f of result.secretFindings) {
+      const icon = f.severity === "error" ? "$(error)" : "$(warning)";
+      response.markdown(`- ${icon} **${f.label}** — ${f.description}\n`);
+      response.markdown(`  \`${f.matchPreview}\`\n`);
+    }
+    response.markdown(`\n$(lightbulb) **Action:** ${result.secretFindings[0].suggestion}\n\n`);
+  }
+
   // Positive signals
   if (result.positiveSignals.length > 0) {
     response.markdown("### What's Working\n");

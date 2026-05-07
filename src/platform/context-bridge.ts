@@ -158,6 +158,7 @@ export class ContextBridge {
       isDirty: doc.isDirty,
       commentLineCount,
       hasConflictMarkers,
+      content: isActive && text.length <= 100_000 ? text : undefined,
     };
   }
 

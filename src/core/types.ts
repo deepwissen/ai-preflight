@@ -27,6 +27,7 @@ export interface FileInfo {
   isDirty: boolean;
   commentLineCount: number;
   hasConflictMarkers: boolean;
+  content?: string; // Active file only, max 100KB — used by secret scanner
 }
 
 export interface SelectionInfo {
@@ -83,7 +84,21 @@ export interface AnalysisResult {
   contextWindowUsage: ContextWindowUsage | null;
   toolAnnotations: Record<string, WasteAnnotation>;
   instructionFileIssues: InstructionFileIssue[];
+  secretFindings: SecretFinding[];
   outcomeInsights?: OutcomeInsights;
+}
+
+export interface SecretFinding {
+  id: string;
+  filePath: string;
+  lineNumber: number;
+  ruleId: string;
+  layer: 1 | 2 | 3 | 4;
+  severity: "warning" | "error";
+  label: string;
+  description: string;
+  matchPreview: string;
+  suggestion: string;
 }
 
 export interface ContextWindowUsage {

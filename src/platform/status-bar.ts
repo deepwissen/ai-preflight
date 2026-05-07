@@ -97,6 +97,13 @@ function getTopReason(result: AnalysisResult): string | undefined {
     return reasons[integrityWarning.issue] ?? "integrity issue";
   }
 
+  // Priority 2.5: secrets found in file content
+  if (result.secretFindings?.length > 0) {
+    const layer1 = result.secretFindings.find((f) => f.layer === 1);
+    if (layer1) return `${layer1.label} exposed`;
+    return "hardcoded secret found";
+  }
+
   // Priority 3: truncation risk
   if (result.contextWindowUsage && result.contextWindowUsage.estimatedUsagePercent > 90) {
     return `${result.contextWindowUsage.estimatedUsagePercent}% context window`;
@@ -118,6 +125,7 @@ function getTopReason(result: AnalysisResult): string | undefined {
       "unsaved-file": "unsaved changes",
       "truncation-risk": "near context limit",
       "data-flow-warning": "sensitive data in context",
+      "secret-in-content": "secret in file",
     };
     return reasons[warning.ruleId] ?? warning.ruleId;
   }

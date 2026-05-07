@@ -27,6 +27,7 @@ export function runPipeline(context: ContextSnapshot, steps: AnalyzerStep[]): An
           ...(partial.instructionFileIssues ?? []),
           ...(result.instructionFileIssues ?? []),
         ],
+        secretFindings: [...(partial.secretFindings ?? []), ...(result.secretFindings ?? [])],
       };
     } catch (err) {
       console.error("[Pipeline] Step failed, skipping:", err);
@@ -62,6 +63,7 @@ function toComplete(partial: Partial<AnalysisResult>): AnalysisResult {
     contextWindowUsage: partial.contextWindowUsage ?? null,
     toolAnnotations: partial.toolAnnotations ?? {},
     instructionFileIssues: partial.instructionFileIssues ?? [],
+    secretFindings: partial.secretFindings ?? [],
     outcomeInsights: partial.outcomeInsights,
   };
 }

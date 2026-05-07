@@ -174,6 +174,39 @@ export function ContextList({ result, onAction }: Props) {
           </ul>
         </>
       )}
+
+      {/* Secret findings */}
+      {result.secretFindings && result.secretFindings.length > 0 && (
+        <>
+          <h4
+            style={{
+              margin: "10px 0 4px",
+              fontSize: "11px",
+              opacity: 0.7,
+              textTransform: "uppercase",
+            }}
+          >
+            Secrets Detected
+          </h4>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {result.secretFindings.map((f) => (
+              <li
+                key={f.id}
+                style={{
+                  padding: "2px 0",
+                  fontSize: "12px",
+                  color:
+                    f.severity === "error"
+                      ? "var(--vscode-editorError-foreground)"
+                      : "var(--vscode-editorWarning-foreground)",
+                }}
+              >
+                {f.severity === "error" ? "\u274C" : "\u26a0"} {f.label} (line {f.lineNumber})
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

@@ -59,5 +59,13 @@ export function scoreRisk(
     }
   }
 
+  // Secret findings floor — Layer 1 (error) → HIGH, any finding → at least MEDIUM
+  const secrets = partial.secretFindings ?? [];
+  if (secrets.some((f) => f.severity === "error") && riskLevel !== "high") {
+    riskLevel = "high";
+  } else if (secrets.length > 0 && riskLevel === "low") {
+    riskLevel = "medium";
+  }
+
   return { riskLevel };
 }
