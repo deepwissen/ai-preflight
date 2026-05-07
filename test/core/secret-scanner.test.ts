@@ -439,6 +439,54 @@ describe("scanSecrets", () => {
     expect(result.secretFindings!.filter((f) => f.layer === 3)).toHaveLength(0);
   });
 
+  it("does NOT trigger on container image reference", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: fileWithContent(
+          'image: "cr.l5d.io/linkerd/proxy:stable-2.14.0"',
+          "deployment.yml"
+        ),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.filter((f) => f.layer === 3)).toHaveLength(0);
+  });
+
+  it("does NOT trigger on AWS ARN", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: fileWithContent(
+          'role = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com"'
+        ),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.filter((f) => f.layer === 3)).toHaveLength(0);
+  });
+
+  it("does NOT trigger on ECR image URI", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: fileWithContent(
+          'image: "602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon-k8s-cni:v1.15.1"',
+          "values.yml"
+        ),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.filter((f) => f.layer === 3)).toHaveLength(0);
+  });
+
+  it("does NOT trigger on version number string", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: fileWithContent('version = "1.23.456.789-beta"'),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.filter((f) => f.layer === 3)).toHaveLength(0);
+  });
+
   it("does NOT double-report line already caught by Layer 1", () => {
     const result = scanSecrets(
       makeSnapshot({

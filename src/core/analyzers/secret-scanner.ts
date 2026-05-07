@@ -41,6 +41,11 @@ const UNQUOTED_VALUE_LANGUAGES = new Set([
   "plaintext",
   "shellscript",
   "dockerfile",
+  "ansible",
+  "spring-boot-properties-yaml",
+  "home-assistant",
+  "cloudformation",
+  "conf",
 ]);
 
 const PLACEHOLDER_PATTERNS = [
@@ -116,8 +121,16 @@ export function shannonEntropy(str: string): number {
 
 const QUOTED_STRING_PATTERN = /["'`]([^"'`\n]{8,200})["'`]/g;
 
-function isUrlOrPath(value: string): boolean {
-  return /^https?:\/\//.test(value) || /^file:\/\//.test(value) || /^\/[\w-]/.test(value);
+function isNonSecretValue(value: string): boolean {
+  return (
+    /^https?:\/\//.test(value) || // URLs
+    /^file:\/\//.test(value) || // file URIs
+    /^\/[\w-]/.test(value) || // absolute paths
+    /^arn:/.test(value) || // AWS ARNs
+    /^[\w.-]+\.\w{2,}\//.test(value) || // registry.io/image, domain/path
+    /:\w[\w.-]*$/.test(value) || // image:tag patterns (cr.io/img:v1.2)
+    /^\d+\.\d+\.\d+/.test(value) // version numbers (1.2.3, 10.0.0.1)
+  );
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -182,7 +195,9 @@ export function scanSecrets(
 
     // Layer 2: Keyword + assignment (quoted or unquoted for config files)
     if (!flaggedLines.has(i)) {
-      const isConfigFile = UNQUOTED_VALUE_LANGUAGES.has(file.languageId);
+      const isConfigFile =
+        UNQUOTED_VALUE_LANGUAGES.has(file.languageId) ||
+        /\.(ya?ml|properties|ini|toml|env|cfg|conf)$/i.test(file.path);
       const kwMatch =
         KEYWORD_PATTERN.exec(line) ?? (isConfigFile ? KEYWORD_UNQUOTED_PATTERN.exec(line) : null);
       if (kwMatch) {
@@ -242,7 +257,7 @@ export function scanSecrets(
       secretFindings.length < MAX_FINDINGS_PER_FILE
     ) {
       const value = qMatch[1];
-      if (isUrlOrPath(value)) continue;
+      if (isNonSecretValue(value)) continue;
       if (isPlaceholder(value)) continue;
       if (value.length < MIN_ENTROPY_LENGTH) continue;
 
