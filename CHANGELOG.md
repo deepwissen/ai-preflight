@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.1
+
+### Added
+
+- **Content-based secret scanner** — scans the active file's content for hardcoded secrets using 4 detection layers:
+  - **Layer 1: Known provider prefixes** (severity: error) — AWS keys (`AKIA`/`ASIA`), GitHub tokens (`ghp_`), Stripe live keys, Google API keys (`AIza`), Slack tokens (`xox`), OpenAI keys (`sk-proj-`), GitLab tokens (`glpat-`), PEM private key blocks
+  - **Layer 2: Keyword + assignment** (severity: warning) — detects any key ending in `password`, `pwd`, `passwd`, `pass`, `secret`, `token`, `api_key`, `apikey`, `auth_key`, `private_key`, `access_key`, `secret_key`, `conn_str`, `connection_string` followed by a hardcoded string value. Skips placeholders, env var references, and template variables.
+  - **Layer 3: Shannon entropy** (severity: warning) — flags quoted strings with entropy >4.5 bits/char and >8 chars. Catches secrets regardless of key name. Skips URLs, file paths, and low-entropy text.
+  - **Layer 4: Connection strings** (severity: warning) — detects `mongodb://`, `postgres://`, `mysql://`, `redis://`, `amqp://`, `mssql://`, JDBC, and .NET `Server=...;Password=...` patterns
+- **Context filtering** — skips comment lines, test files, files >100KB, caps at 10 findings per file
+- **Secret-based risk escalation** — Layer 1 findings (provider keys) set risk floor to HIGH; any secret finding escalates LOW to MEDIUM
+- **Secrets Detected** section in sidebar panel and @preflight chat output
+- **Status bar** shows "AWS Access Key exposed" or "hardcoded secret found" when secrets detected
+
 ## 0.5.0
 
 ### Added
