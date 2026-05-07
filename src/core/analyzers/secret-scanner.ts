@@ -24,8 +24,24 @@ const PROVIDER_PREFIXES: Array<{ id: string; label: string; pattern: RegExp }> =
 
 // ─── Layer 2: Keyword + Assignment ───────────────────────────────
 
+// Quoted values — works in any language
 const KEYWORD_PATTERN =
   /\b(\w*(?:password|passwd|pwd|pass|secret|token|api_key|apikey|auth_key|private_key|access_key|secret_key|conn_str|connection_string))\s*[:=]>?\s*["'`]([^"'`\n]{1,200})["'`]/i;
+
+// Unquoted values — for YAML, .properties, .ini, .env, TOML, config files
+const KEYWORD_UNQUOTED_PATTERN =
+  /\b(\w*(?:password|passwd|pwd|pass|secret|token|api_key|apikey|auth_key|private_key|access_key|secret_key|conn_str|connection_string))\s*[:=]\s*(\S+)\s*$/i;
+
+const UNQUOTED_VALUE_LANGUAGES = new Set([
+  "yaml",
+  "properties",
+  "ini",
+  "toml",
+  "dotenv",
+  "plaintext",
+  "shellscript",
+  "dockerfile",
+]);
 
 const PLACEHOLDER_PATTERNS = [
   /^$/,
@@ -164,9 +180,11 @@ export function scanSecrets(
       }
     }
 
-    // Layer 2: Keyword + assignment
+    // Layer 2: Keyword + assignment (quoted or unquoted for config files)
     if (!flaggedLines.has(i)) {
-      const kwMatch = KEYWORD_PATTERN.exec(line);
+      const isConfigFile = UNQUOTED_VALUE_LANGUAGES.has(file.languageId);
+      const kwMatch =
+        KEYWORD_PATTERN.exec(line) ?? (isConfigFile ? KEYWORD_UNQUOTED_PATTERN.exec(line) : null);
       if (kwMatch) {
         const keyName = kwMatch[1];
         const value = kwMatch[2];

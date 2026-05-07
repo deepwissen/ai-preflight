@@ -33,9 +33,19 @@ function makeFile(overrides: Partial<FileInfo> = {}): FileInfo {
   };
 }
 
+function langFromPath(path: string): string {
+  if (path.endsWith(".yml") || path.endsWith(".yaml")) return "yaml";
+  if (path.endsWith(".properties")) return "properties";
+  if (path.endsWith(".env") || path.startsWith(".env")) return "dotenv";
+  if (path.endsWith(".toml")) return "toml";
+  if (path.endsWith(".ini")) return "ini";
+  return "typescript";
+}
+
 function fileWithContent(content: string, path = "src/config.ts"): FileInfo {
   return makeFile({
     path,
+    languageId: langFromPath(path),
     content,
     lineCount: content.split("\n").length,
     charCount: content.length,
@@ -305,6 +315,72 @@ describe("scanSecrets", () => {
     const result = scanSecrets(
       makeSnapshot({
         activeFile: fileWithContent('password = "<your-password-here>"'),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.filter((f) => f.layer === 2)).toHaveLength(0);
+  });
+
+  // ─── Layer 2b: Unquoted values in YAML/config ──────────────────
+
+  it("detects unquoted password in YAML", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: fileWithContent("ml_ref_password: vale", "config.yml"),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.some((f) => f.layer === 2)).toBe(true);
+  });
+
+  it("detects unquoted db_password in YAML", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: fileWithContent("db_password: Summer2026!", "application.yml"),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.some((f) => f.layer === 2)).toBe(true);
+  });
+
+  it("detects unquoted secret in .properties", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: makeFile({
+          path: "application.properties",
+          languageId: "properties",
+          content: "spring.datasource.password=dbpass123",
+          lineCount: 1,
+          charCount: 36,
+          isActive: true,
+        }),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.some((f) => f.layer === 2)).toBe(true);
+  });
+
+  it("detects unquoted token in .env file", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: makeFile({
+          path: ".env",
+          languageId: "dotenv",
+          content: "AUTH_TOKEN=my-secret-token-value",
+          lineCount: 1,
+          charCount: 31,
+          isActive: true,
+        }),
+      }),
+      {}
+    );
+    expect(result.secretFindings!.some((f) => f.layer === 2)).toBe(true);
+  });
+
+  it("does NOT detect unquoted value in .ts file (would false positive on code)", () => {
+    const result = scanSecrets(
+      makeSnapshot({
+        activeFile: fileWithContent("const password = getPassword()"),
       }),
       {}
     );
