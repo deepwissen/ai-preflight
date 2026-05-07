@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.3
+
+### Fixed
+
+- **Reduced entropy false positives** — container images (`registry.io/image:tag`), AWS ARNs (`arn:aws:...`), ECR URIs, domain/path combos, and version numbers no longer flagged as high-entropy secrets
+- **Improved unquoted config detection** — file extension fallback (`.yml`, `.yaml`, `.properties`, `.env`, `.cfg`, `.conf`) ensures passwords are caught even when VS Code assigns unexpected languageId
+- Added support for Ansible, CloudFormation, and conf languageIds
+
 ## 0.5.2
 
 ### Fixed
