@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+
+### Fixed
+
+- **Unquoted secret detection** — keyword scanner now catches unquoted values in YAML, `.properties`, `.env`, `.ini`, TOML, and shell files (e.g., `db_password: Summer2026!`, `AUTH_TOKEN=my-secret`). Unquoted matching only activates for config-like languages to avoid false positives in code files.
+
 ## 0.5.1
 
 ### Added
