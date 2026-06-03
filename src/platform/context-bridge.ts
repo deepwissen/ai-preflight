@@ -20,6 +20,7 @@ export class ContextBridge {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private disposables: vscode.Disposable[] = [];
   private aiInstructionFilesCache: InstructionFileInfo[] = [];
+  private mcpConfigFilesCache: import("../core/types.js").McpConfigFileInfo[] = [];
   private ignoreFilesCache: string[] = [];
   private toolProfileCache: ToolProfile | null = null;
   private editCounts = new Map<string, { count: number; lastTimestamp: number }>();
@@ -43,10 +44,10 @@ export class ContextBridge {
           this.scheduleUpdate();
         }
       }),
-      // Re-scan instruction files when they are saved (content may have changed)
+      // Re-scan instruction/MCP files when they are saved (content may have changed)
       vscode.workspace.onDidSaveTextDocument((doc) => {
         const relativePath = vscode.workspace.asRelativePath(doc.uri);
-        if (this.isInstructionFile(relativePath)) {
+        if (this.isInstructionFile(relativePath) || this.isMcpConfigFile(relativePath)) {
           void this.initAndCapture();
         }
       }),
@@ -104,7 +105,11 @@ export class ContextBridge {
   }
 
   private async initAndCapture(): Promise<void> {
-    await Promise.all([this.detectAiInstructionFiles(), this.detectIgnoreFiles()]);
+    await Promise.all([
+      this.detectAiInstructionFiles(),
+      this.detectIgnoreFiles(),
+      this.detectMcpConfigFiles(),
+    ]);
     this.captureAndEmit();
   }
 
@@ -131,6 +136,7 @@ export class ContextBridge {
       clipboardSize: null,
       chatHistoryLength: 0,
       aiInstructionFiles: this.aiInstructionFilesCache,
+      mcpConfigFiles: this.mcpConfigFilesCache,
       toolProfile: this.toolProfileCache,
       ignoreFiles: this.ignoreFilesCache,
     };
@@ -231,6 +237,14 @@ export class ContextBridge {
     "**/.codeiumignore",
   ];
 
+  private static readonly MCP_CONFIG_PATTERNS = [
+    "**/.mcp.json",
+    "**/mcp.json",
+    "**/.vscode/mcp.json",
+    "**/.cursor/mcp.json",
+    "**/claude_desktop_config.json",
+  ];
+
   private async detectAiInstructionFiles(): Promise<void> {
     const files: InstructionFileInfo[] = [];
     for (const { pattern, toolId } of ContextBridge.INSTRUCTION_FILE_PATTERNS) {
@@ -273,6 +287,17 @@ export class ContextBridge {
     return false;
   }
 
+  private isMcpConfigFile(relativePath: string): boolean {
+    const name = relativePath.split("/").pop() ?? "";
+    return (
+      name === ".mcp.json" ||
+      name === "mcp.json" ||
+      name === "claude_desktop_config.json" ||
+      relativePath.includes(".vscode/mcp.json") ||
+      relativePath.includes(".cursor/mcp.json")
+    );
+  }
+
   private async detectIgnoreFiles(): Promise<void> {
     const ignoreFiles: string[] = [];
     for (const pattern of ContextBridge.IGNORE_FILE_PATTERNS) {
@@ -287,6 +312,30 @@ export class ContextBridge {
       }
     }
     this.ignoreFilesCache = ignoreFiles;
+  }
+
+  private async detectMcpConfigFiles(): Promise<void> {
+    const files: import("../core/types.js").McpConfigFileInfo[] = [];
+    for (const pattern of ContextBridge.MCP_CONFIG_PATTERNS) {
+      try {
+        const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 5);
+        for (const uri of found) {
+          const relativePath = vscode.workspace.asRelativePath(uri);
+          let content: string | undefined;
+          try {
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const text = doc.getText();
+            if (text.length <= 50_000) content = text;
+          } catch {
+            // File may not be readable
+          }
+          files.push({ path: relativePath, content });
+        }
+      } catch {
+        // Pattern search failed
+      }
+    }
+    this.mcpConfigFilesCache = files;
   }
 
   /** Extension ID → AI tool mapping for auto-detection. */

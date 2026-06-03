@@ -6,6 +6,13 @@ const INTEGRITY_ISSUES = new Set<InstructionFileIssue["issue"]>([
   "suspicious-instruction",
 ]);
 
+const MCP_ISSUES = new Set<InstructionFileIssue["issue"]>([
+  "mcp-embedded-secret",
+  "mcp-suspicious-tool",
+  "mcp-unknown-server",
+  "mcp-risky-config",
+]);
+
 const CLOSEABLE_WASTE_RULES = new Set([
   "lock-file",
   "env-file",
@@ -204,6 +211,48 @@ export function ContextList({ result, onAction }: Props) {
                 {f.severity === "error" ? "\u274C" : "\u26a0"} {f.label} (line {f.lineNumber})
               </li>
             ))}
+          </ul>
+        </>
+      )}
+
+      {/* MCP Security */}
+      {result.instructionFileIssues.filter((i) => MCP_ISSUES.has(i.issue)).length > 0 && (
+        <>
+          <h4
+            style={{
+              margin: "10px 0 4px",
+              fontSize: "11px",
+              opacity: 0.7,
+              textTransform: "uppercase",
+            }}
+          >
+            MCP Security
+          </h4>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {result.instructionFileIssues
+              .filter((i) => MCP_ISSUES.has(i.issue))
+              .map((issue) => (
+                <li
+                  key={issue.id}
+                  style={{
+                    padding: "2px 0",
+                    fontSize: "12px",
+                    color:
+                      issue.severity === "error"
+                        ? "var(--vscode-editorError-foreground)"
+                        : issue.severity === "warning"
+                          ? "var(--vscode-editorWarning-foreground)"
+                          : "inherit",
+                  }}
+                >
+                  {issue.severity === "error"
+                    ? "\u274C"
+                    : issue.severity === "warning"
+                      ? "\u26a0"
+                      : "\u2139"}{" "}
+                  {issue.description}
+                </li>
+              ))}
           </ul>
         </>
       )}
