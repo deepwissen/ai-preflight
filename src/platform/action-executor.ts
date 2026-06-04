@@ -173,11 +173,27 @@ async function closeTabByPath(args?: Record<string, unknown>): Promise<void> {
   const targetPath = args?.path as string | undefined;
   if (!targetPath) return;
 
+  // Try exact path match first, then filename-only fallback
   for (const group of vscode.window.tabGroups.all) {
     for (const tab of group.tabs) {
       if (tab.input instanceof vscode.TabInputText) {
         const tabPath = vscode.workspace.asRelativePath(tab.input.uri);
         if (tabPath === targetPath) {
+          await vscode.window.tabGroups.close(tab);
+          return;
+        }
+      }
+    }
+  }
+
+  // Fallback: match by filename only (handles path format mismatches)
+  const targetName = targetPath.split("/").pop();
+  if (!targetName) return;
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (tab.input instanceof vscode.TabInputText) {
+        const tabName = vscode.workspace.asRelativePath(tab.input.uri).split("/").pop();
+        if (tabName === targetName) {
           await vscode.window.tabGroups.close(tab);
           return;
         }
@@ -203,15 +219,20 @@ async function closeWasteTabs(args?: Record<string, unknown>): Promise<void> {
   const paths = (args?.paths as string[]) ?? [];
   if (paths.length === 0) return;
   const pathSet = new Set(paths);
+  // Collect tabs first to avoid mutating the collection during iteration
+  const tabsToClose: vscode.Tab[] = [];
   for (const group of vscode.window.tabGroups.all) {
     for (const tab of group.tabs) {
       if (tab.input instanceof vscode.TabInputText) {
         const tabPath = vscode.workspace.asRelativePath(tab.input.uri);
         if (pathSet.has(tabPath)) {
-          await vscode.window.tabGroups.close(tab);
+          tabsToClose.push(tab);
         }
       }
     }
+  }
+  for (const tab of tabsToClose) {
+    await vscode.window.tabGroups.close(tab);
   }
 }
 

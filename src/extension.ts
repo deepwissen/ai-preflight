@@ -125,6 +125,13 @@ function activateInternal(context: vscode.ExtensionContext): void {
   });
   eventBus.on("action:executed", (command) => {
     outcomeTracker.recordAction(command);
+    // Force re-capture after actions (e.g., closing tabs) to update sidebar immediately
+    setTimeout(() => {
+      const snapshot = contextBridge.captureNow();
+      const result = runPipeline(snapshot, pipelineSteps);
+      result.suggestions = dismissalTracker.apply(result.suggestions);
+      eventBus.emit("analysis:complete", result);
+    }, 300);
   });
 
   // Re-run pipeline after dismissal so UI updates immediately

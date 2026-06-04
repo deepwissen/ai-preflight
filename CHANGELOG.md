@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0
+
+### Added
+
+- **MCP config security scanner** — scans `.mcp.json`, `mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.json`, `claude_desktop_config.json` for security issues before AI agents connect:
+  - Embedded secrets: provider prefixes (AWS, GitHub, Stripe, OpenAI, Slack, GitLab), keyword secrets in env, credentials in URLs, auth tokens in headers, high-entropy env values
+  - Tool description poisoning: hidden unicode, bidi overrides, prompt injection patterns, compound attack detection (auto-escalated to error)
+  - Untrusted servers: non-HTTPS external connections, embedded credentials in URLs
+  - Risky configs: ambiguous transport (command + url both defined)
+- **Active-file MCP detection** — any open JSON file containing `mcpServers` is scanned even if filename doesn't match known patterns
+- **JSONC support** — MCP configs with `//` comments are now parsed correctly
+- **MCP Security** section in sidebar panel and @preflight chat output
+- **Status bar labels** for MCP findings (secret in MCP config, suspicious MCP tool, untrusted MCP server)
+
+### Fixed
+
+- **Close button reliability** — tab close actions now collect tabs before closing to avoid mid-iteration mutation
+- **Sidebar refresh after actions** — forced re-capture 300ms after action execution ensures sidebar updates immediately
+- **Close tab fallback** — filename-only matching when exact path doesn't match (handles workspace path format differences)
+
 ## 0.5.3
 
 ### Fixed

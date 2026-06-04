@@ -52,12 +52,25 @@ export function scanMcpConfigs(
 ): Partial<AnalysisResult> {
   const instructionFileIssues: InstructionFileIssue[] = [];
 
-  for (const config of context.mcpConfigFiles ?? []) {
+  // Also scan active file if it looks like an MCP config (contains mcpServers)
+  const configs = [...(context.mcpConfigFiles ?? [])];
+  if (
+    context.activeFile?.content &&
+    (context.activeFile.content.includes('"mcpServers"') ||
+      context.activeFile.content.includes('"servers"')) &&
+    !configs.some((c) => c.path === context.activeFile!.path)
+  ) {
+    configs.push({ path: context.activeFile.path, content: context.activeFile.content });
+  }
+
+  for (const config of configs) {
     if (!config.content) continue;
 
     let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(config.content);
+      // Strip JSONC comments — skip // inside strings, remove /* */ blocks
+      const jsonContent = stripJsoncComments(config.content);
+      parsed = JSON.parse(jsonContent);
     } catch {
       continue; // Malformed JSON — skip
     }
@@ -364,4 +377,49 @@ function makeIssue(
 
 function fileName(path: string): string {
   return path.split("/").pop() ?? path;
+}
+
+/** Strip JSONC single-line (//) and multi-line comments without breaking strings. */
+function stripJsoncComments(text: string): string {
+  let result = "";
+  let inString = false;
+  let escape = false;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (escape) {
+      result += ch;
+      escape = false;
+      i++;
+      continue;
+    }
+    if (inString) {
+      if (ch === "\\") escape = true;
+      if (ch === '"') inString = false;
+      result += ch;
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      result += ch;
+      i++;
+      continue;
+    }
+    if (ch === "/" && text[i + 1] === "/") {
+      // Skip to end of line
+      while (i < text.length && text[i] !== "\n") i++;
+      continue;
+    }
+    if (ch === "/" && text[i + 1] === "*") {
+      // Skip to */
+      i += 2;
+      while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i++;
+      i += 2;
+      continue;
+    }
+    result += ch;
+    i++;
+  }
+  return result;
 }
