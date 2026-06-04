@@ -215,6 +215,28 @@ function renderResponse(
     response.markdown(`\n$(lightbulb) **Action:** ${result.secretFindings[0].suggestion}\n\n`);
   }
 
+  // MCP config security issues
+  const mcpIssues = result.instructionFileIssues.filter(
+    (i) =>
+      i.issue === "mcp-embedded-secret" ||
+      i.issue === "mcp-suspicious-tool" ||
+      i.issue === "mcp-unknown-server" ||
+      i.issue === "mcp-risky-config"
+  );
+  if (mcpIssues.length > 0) {
+    response.markdown("### MCP Config Security\n");
+    for (const issue of mcpIssues) {
+      const icon =
+        issue.severity === "error"
+          ? "$(error)"
+          : issue.severity === "warning"
+            ? "$(warning)"
+            : "$(info)";
+      response.markdown(`- ${icon} **${issue.issue}:** ${issue.description}\n`);
+    }
+    response.markdown("\n");
+  }
+
   // Positive signals
   if (result.positiveSignals.length > 0) {
     response.markdown("### What's Working\n");

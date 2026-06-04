@@ -8,6 +8,7 @@ export interface ContextSnapshot {
   selection: SelectionInfo | null;
   openTabs: FileInfo[];
   aiInstructionFiles: InstructionFileInfo[];
+  mcpConfigFiles: McpConfigFileInfo[];
   toolProfile: ToolProfile | null;
   ignoreFiles: string[];
 
@@ -64,6 +65,11 @@ export interface InstructionFileInfo {
   path: string;
   lineCount: number;
   toolId: AiToolId | null;
+  content?: string;
+}
+
+export interface McpConfigFileInfo {
+  path: string;
   content?: string;
 }
 
@@ -124,7 +130,11 @@ export interface InstructionFileIssue {
     | "missing"
     | "hidden-unicode"
     | "bidi-override"
-    | "suspicious-instruction";
+    | "suspicious-instruction"
+    | "mcp-embedded-secret"
+    | "mcp-suspicious-tool"
+    | "mcp-unknown-server"
+    | "mcp-risky-config";
   severity?: "info" | "warning" | "error";
   lineCount?: number;
   lineNumber?: number;

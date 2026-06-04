@@ -93,6 +93,10 @@ function getTopReason(result: AnalysisResult): string | undefined {
       "suspicious-instruction": "prompt injection found",
       "bidi-override": "bidi attack found",
       "hidden-unicode": "hidden unicode found",
+      "mcp-embedded-secret": "secret in MCP config",
+      "mcp-suspicious-tool": "suspicious MCP tool",
+      "mcp-unknown-server": "untrusted MCP server",
+      "mcp-risky-config": "risky MCP config",
     };
     return reasons[integrityWarning.issue] ?? "integrity issue";
   }

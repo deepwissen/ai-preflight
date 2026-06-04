@@ -28,6 +28,7 @@ export const CLEAN_SMALL: ContextSnapshot = {
   clipboardSize: null,
   chatHistoryLength: 0,
   aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
+  mcpConfigFiles: [],
   toolProfile: { toolId: "cursor" as const, detectedVia: "auto" as const },
   ignoreFiles: [".cursorignore"],
 };
@@ -62,6 +63,7 @@ export const MEDIUM_WITH_SELECTION: ContextSnapshot = {
   clipboardSize: null,
   chatHistoryLength: 2,
   aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
+  mcpConfigFiles: [],
   toolProfile: { toolId: "copilot" as const, detectedVia: "setting" as const },
   ignoreFiles: [],
 };
@@ -102,6 +104,7 @@ export const NOISY_LARGE: ContextSnapshot = {
   clipboardSize: null,
   chatHistoryLength: 3,
   aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
+  mcpConfigFiles: [],
   toolProfile: null,
   ignoreFiles: [],
 };
@@ -132,6 +135,7 @@ export const LARGE_SELECTION: ContextSnapshot = {
   clipboardSize: null,
   chatHistoryLength: 0,
   aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
+  mcpConfigFiles: [],
   toolProfile: null,
   ignoreFiles: [],
 };
@@ -147,6 +151,7 @@ export const EMPTY: ContextSnapshot = {
   clipboardSize: null,
   chatHistoryLength: 0,
   aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
+  mcpConfigFiles: [],
   toolProfile: null,
   ignoreFiles: [],
 };
@@ -177,6 +182,7 @@ export const MIXED_TEST_PROD: ContextSnapshot = {
   clipboardSize: null,
   chatHistoryLength: 0,
   aiInstructionFiles: [{ path: ".cursorrules", lineCount: 20, toolId: "cursor" as const }],
+  mcpConfigFiles: [],
   toolProfile: null,
   ignoreFiles: [],
 };
