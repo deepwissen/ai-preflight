@@ -9,9 +9,20 @@ updates:
     labels:
       - "dependencies"
     groups:
-      npm_and_yarn:
-        patterns:
-          - "*"
+      # Batch only non-breaking updates so a single PR can never bundle
+      # conflicting MAJOR bumps (e.g. typescript 7 alongside an eslint-plugin
+      # that only supports typescript <6.1). Majors are intentionally left out
+      # of every group, so Dependabot raises them as separate, reviewable PRs.
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -21,3 +32,8 @@ updates:
     open-pull-requests-limit: 3
     labels:
       - "ci"
+    groups:
+      github-actions:
+        update-types:
+          - "minor"
+          - "patch"
