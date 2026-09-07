@@ -9,10 +9,17 @@ updates:
     labels:
       - "dependencies"
     groups:
+      # Coupled packages that MUST share a version. @typescript-eslint/parser and
+      # @typescript-eslint/eslint-plugin lock to the same major, so they have to
+      # move together — bumping one alone fails `npm ci` with a peer conflict.
+      # No update-types filter here → majors are included so the pair stays in sync.
+      typescript-eslint:
+        patterns:
+          - "@typescript-eslint/*"
       # Batch only non-breaking updates so a single PR can never bundle
       # conflicting MAJOR bumps (e.g. typescript 7 alongside an eslint-plugin
-      # that only supports typescript <6.1). Majors are intentionally left out
-      # of every group, so Dependabot raises them as separate, reviewable PRs.
+      # that only supports typescript <6.1). Majors are otherwise left out of
+      # every group, so Dependabot raises them as separate, reviewable PRs.
       dev-dependencies:
         dependency-type: "development"
         update-types:
