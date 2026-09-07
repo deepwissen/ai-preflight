@@ -197,6 +197,6 @@
     "vitest": "^4.1.0"
   },
   "dependencies": {
-    "preact": "^10.19.0"
+    "preact": "^10.29.8"
   }
 }
