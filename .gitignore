@@ -5,6 +5,10 @@ coverage/
 .DS_Store
 *.log
 
+# Single package manager: npm (package-lock.json). Keep other lockfiles out.
+pnpm-lock.yaml
+yarn.lock
+
 # Secret-scanner test fixtures — real-looking secrets kept locally, never commit
 test/.env
 test/.npmrc

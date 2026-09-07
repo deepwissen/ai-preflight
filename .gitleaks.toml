@@ -13,20 +13,13 @@ placeholders used to verify detection, not real credentials, and are allowlisted
 here so gitleaks does not fail CI on them. Real source code is still scanned.
 """
 
-# Fixture files and scanner tests that intentionally embed fake secrets.
+# Fixture files and scanner tests that intentionally embed fake secrets are
+# allowlisted by path (kept here rather than by literal value so this config
+# itself contains no secret-like strings — which other scanners, e.g. vsce's
+# package check, would otherwise flag).
 paths = [
   '''^test/core/secret-scanner\.test\.ts$''',
   '''^test/core/mcp-scanner\.test\.ts$''',
   '''^test/.*\.(ya?ml|json|env|properties|ini|toml|pem)$''',
   '''^test/(id_[a-z0-9]+|\.env.*|\.npmrc|\.netrc)$''',
-]
-
-# Belt-and-braces: also ignore the well-known dummy tokens by value, in case a
-# fixture moves. These exact strings are the sequential/alphabetical placeholders.
-regexes = [
-  '''glpat-abcdefghijklmnopqrst''',
-  '''xoxb-123456789012-abcdefghij''',
-  '''sk-proj-abcdefghijklmnopqrstuvwxyz''',
-  '''AIzaSyA-abcdefghijklmnopqrstuvwxyz12345''',
-  '''dd-a(pi|pp)-key-prod-\d+''',
 ]

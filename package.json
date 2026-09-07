@@ -177,7 +177,7 @@
     "typecheck": "tsc --noEmit",
     "scan:secrets": "gitleaks dir . --config .gitleaks.toml --redact --no-banner --verbose",
     "scan:secrets:history": "gitleaks git . --config .gitleaks.toml --redact --no-banner",
-    "package": "pnpm build && vsce package --no-dependencies",
+    "package": "npm run build && vsce package --no-dependencies",
     "publish": "vsce publish --no-dependencies",
     "prepare": "husky"
   },
