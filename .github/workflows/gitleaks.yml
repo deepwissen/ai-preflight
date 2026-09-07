@@ -1,0 +1,29 @@
+name: Secret Scan
+
+# Runs on every push and PR (unlike security.yml, which is scoped to dependency
+# changes) so no commit can introduce a secret without being caught.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so gitleaks can scan every commit
+
+      # Uses the official gitleaks image (no marketplace-action license needed
+      # for org repos). Reads .gitleaks.toml from the repo root.
+      - name: Run gitleaks
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" \
+            ghcr.io/gitleaks/gitleaks:latest \
+            git /repo --config /repo/.gitleaks.toml --redact --no-banner --verbose

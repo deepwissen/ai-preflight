@@ -1,0 +1,32 @@
+# gitleaks configuration for AI Preflight
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+
+# Inherit all of gitleaks' built-in rules, then layer our allowlist on top.
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+AI Preflight is itself a secret scanner, so its test suite and fixtures contain
+DUMMY secrets by design (e.g. 'glpat-abcdef...', 'xoxb-1234567...'). These are
+placeholders used to verify detection, not real credentials, and are allowlisted
+here so gitleaks does not fail CI on them. Real source code is still scanned.
+"""
+
+# Fixture files and scanner tests that intentionally embed fake secrets.
+paths = [
+  '''^test/core/secret-scanner\.test\.ts$''',
+  '''^test/core/mcp-scanner\.test\.ts$''',
+  '''^test/.*\.(ya?ml|json|env|properties|ini|toml|pem)$''',
+  '''^test/(id_[a-z0-9]+|\.env.*|\.npmrc|\.netrc)$''',
+]
+
+# Belt-and-braces: also ignore the well-known dummy tokens by value, in case a
+# fixture moves. These exact strings are the sequential/alphabetical placeholders.
+regexes = [
+  '''glpat-abcdefghijklmnopqrst''',
+  '''xoxb-123456789012-abcdefghij''',
+  '''sk-proj-abcdefghijklmnopqrstuvwxyz''',
+  '''AIzaSyA-abcdefghijklmnopqrstuvwxyz12345''',
+  '''dd-a(pi|pp)-key-prod-\d+''',
+]

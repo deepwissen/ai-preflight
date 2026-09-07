@@ -605,6 +605,49 @@ describe("scanSecrets", () => {
   });
 });
 
+// ─── Adversarial hardening (v0.7.0) ─────────────────────────────
+// Regression guards for findings from the cross-engine adversarial corpus:
+// two entropy-layer false positives + two coverage gaps.
+describe("scanSecrets — adversarial hardening", () => {
+  const scan = (content: string, path = "src/config.ts") =>
+    scanSecrets(makeSnapshot({ activeFile: fileWithContent(content, path) }), {});
+
+  // False positives that the entropy layer used to flag.
+  it("does NOT flag Subresource-Integrity / checksum digests", () => {
+    const r = scan('integrity: "sha256-a8K3mZp9Qw2LxNvB7yH4jR6tF5gE1cD0uP2qXrJ8vK="');
+    expect(r.secretFindings).toHaveLength(0);
+  });
+
+  it("does NOT flag sha512 integrity digests", () => {
+    const r = scan('"integrity": "sha512-9xK3mZp7Qw2LxNvB4yH8jR6tF5gE1cD0aBcDeFgHiJkLmNoPqRsTuVwXyZ012345=="');
+    expect(r.secretFindings).toHaveLength(0);
+  });
+
+  it("does NOT flag base64 data URIs", () => {
+    const r = scan('const img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ";');
+    expect(r.secretFindings).toHaveLength(0);
+  });
+
+  // Coverage gaps that used to be missed.
+  it("flags npm authentication tokens", () => {
+    const r = scan(
+      "//registry.npmjs.org/:_authToken=npm_9xK3mZp7Qw2LxNvB4yH8jR6tF5gE1cD0aBcD",
+      ".npmrc"
+    );
+    expect(r.secretFindings.some((f) => f.ruleId === "npm-token")).toBe(true);
+  });
+
+  it("flags credentials embedded in a URL", () => {
+    const r = scan('const u = "https://admin:Sup3rS3cr3tPw@internal.example.com/api";');
+    expect(r.secretFindings.some((f) => f.ruleId === "url-embedded-credentials")).toBe(true);
+  });
+
+  it("flags credentials in non-http URL schemes too", () => {
+    const r = scan('const r = "redis://user:pass99word@redis-host:6379/0";');
+    expect(r.secretFindings.length).toBeGreaterThan(0);
+  });
+});
+
 // ─── Shannon Entropy Unit Tests ────────────────────────────────
 
 describe("shannonEntropy", () => {

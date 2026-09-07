@@ -4,3 +4,12 @@ coverage/
 *.vsix
 .DS_Store
 *.log
+
+# Secret-scanner test fixtures — real-looking secrets kept locally, never commit
+test/.env
+test/.npmrc
+test/credentials.json
+test/id_rsa
+test/server.pem
+test/terraform.tfstate
+test/docker-compose.yml

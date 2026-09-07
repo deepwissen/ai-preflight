@@ -2,7 +2,7 @@
   "name": "ai-preflight",
   "displayName": "AI Preflight",
   "description": "Context observability and optimization for AI-assisted development. See what context your AI tools are using, estimate prompt size, and get suggestions to improve AI responses.",
-  "version": "0.6.1",
+  "version": "0.8.0",
   "publisher": "KiranChanda",
   "license": "MIT",
   "repository": {
@@ -150,6 +150,18 @@
           "type": "string",
           "default": "",
           "description": "Optional: specific model within your AI tool (e.g., 'gpt-4o' for Copilot, 'gemini' for Copilot). Leave empty to use the tool's default context window."
+        },
+        "ai-preflight.budget.heavyTokens": {
+          "type": "number",
+          "default": 25000,
+          "minimum": 0,
+          "description": "Context-budget threshold (absolute tokens) above which context is flagged 'heavy'. Output quality degrades as context grows, independent of the window limit. Lower for stricter, quality-focused prompting."
+        },
+        "ai-preflight.budget.bloatedTokens": {
+          "type": "number",
+          "default": 75000,
+          "minimum": 0,
+          "description": "Context-budget threshold (absolute tokens) above which context is flagged 'bloated' — well into 'context rot' territory where models stop reliably using all the context. Should be greater than ai-preflight.budget.heavyTokens."
         }
       }
     }
@@ -163,8 +175,11 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "scan:secrets": "gitleaks dir . --config .gitleaks.toml --redact --no-banner --verbose",
+    "scan:secrets:history": "gitleaks git . --config .gitleaks.toml --redact --no-banner",
     "package": "pnpm build && vsce package --no-dependencies",
-    "publish": "vsce publish --no-dependencies"
+    "publish": "vsce publish --no-dependencies",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -176,6 +191,7 @@
     "audit-ci": "^7.1.0",
     "esbuild": "^0.27.4",
     "eslint": "^8.57.0",
+    "husky": "^9.1.7",
     "prettier": "^3.2.0",
     "typescript": "^5.4.0",
     "vitest": "^4.1.0"

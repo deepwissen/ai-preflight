@@ -5,6 +5,13 @@ import { extractImportPaths } from "../core/import-patterns.js";
 const MAX_RESULTS = 20;
 const IMPORT_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.js"];
 
+// Keywords are derived from prompt text and workspace file names, both of which
+// can contain regex metacharacters (e.g. "foo(1).ts"). Escaping them before
+// building a RegExp prevents SyntaxError crashes and regex-injection / ReDoS.
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // Shared exclude pattern for all findFiles calls — skip vendored/generated/env directories
 const EXCLUDED_DIRS = [
   "**/node_modules/**",
@@ -383,7 +390,7 @@ async function searchFileContents(
 
   const matches: WorkspaceMatch[] = [];
   // Word-boundary regex to avoid partial matches (e.g., "auth" in "unauthorized")
-  const boundedKeywords = filteredKeywords.map((k) => `\\b${k}\\b`);
+  const boundedKeywords = filteredKeywords.map((k) => `\\b${escapeRegExp(k)}\\b`);
   const regex = new RegExp(boundedKeywords.join("|"), "i");
 
   try {
@@ -420,7 +427,7 @@ async function searchFileContents(
             path: relativePath,
             reason: "content",
             keyword:
-              filteredKeywords.find((k) => new RegExp(k, "i").test(lineMatch[0])) ??
+              filteredKeywords.find((k) => new RegExp(escapeRegExp(k), "i").test(lineMatch[0])) ??
               filteredKeywords[0],
             confidence: "low",
             contentMatch: {

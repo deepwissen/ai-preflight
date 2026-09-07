@@ -139,6 +139,16 @@ export class ContextBridge {
       mcpConfigFiles: this.mcpConfigFilesCache,
       toolProfile: this.toolProfileCache,
       ignoreFiles: this.ignoreFilesCache,
+      budgetThresholds: this.resolveBudgetThresholds(),
+    };
+  }
+
+  /** Context-budget bands, overridable via ai-preflight.budget.* config. */
+  private resolveBudgetThresholds() {
+    const config = vscode.workspace.getConfiguration("ai-preflight");
+    return {
+      heavy: config.get<number>("budget.heavyTokens", 25_000),
+      bloated: config.get<number>("budget.bloatedTokens", 75_000),
     };
   }
 

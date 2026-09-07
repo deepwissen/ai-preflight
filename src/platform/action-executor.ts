@@ -3,6 +3,25 @@ import * as vscode from "vscode";
 const TEST_FILE_PATTERNS = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
 
 /**
+ * Resolves `fileName` under `folder` and confirms the result stays inside it.
+ * Action args round-trip through the webview, so a name like "../../etc/x"
+ * must not be allowed to escape the workspace root when writing files.
+ * Returns the safe Uri, or null if the name is absolute or escapes the root.
+ */
+function resolveWithinWorkspace(
+  folder: vscode.WorkspaceFolder,
+  fileName: string
+): vscode.Uri | null {
+  const target = vscode.Uri.joinPath(folder.uri, fileName);
+  const root = folder.uri.path.replace(/\/+$/, "");
+  // Must be the root itself (never) or a descendant path segment of it.
+  if (target.path !== root && !target.path.startsWith(root + "/")) {
+    return null;
+  }
+  return target;
+}
+
+/**
  * Executes 1-click fix actions triggered from the webview.
  * All VS Code API calls for suggestion actions are centralized here.
  */
@@ -152,7 +171,8 @@ async function createInstructionFile(args?: Record<string, unknown>): Promise<vo
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) return;
 
-  const uri = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
+  const uri = resolveWithinWorkspace(workspaceFolder, fileName);
+  if (!uri) return; // reject paths that escape the workspace root
   const template = `# AI Instructions\n\n## Coding Conventions\n\n- \n\n## Project Rules\n\n- \n`;
   await vscode.workspace.fs.writeFile(uri, Buffer.from(template, "utf-8"));
   await vscode.window.showTextDocument(uri);
@@ -163,7 +183,8 @@ async function createIgnoreFile(args?: Record<string, unknown>): Promise<void> {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) return;
 
-  const uri = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
+  const uri = resolveWithinWorkspace(workspaceFolder, fileName);
+  if (!uri) return; // reject paths that escape the workspace root
   const template = `node_modules/\ndist/\nbuild/\n.env*\n`;
   await vscode.workspace.fs.writeFile(uri, Buffer.from(template, "utf-8"));
   await vscode.window.showTextDocument(uri);

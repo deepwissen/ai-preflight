@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+# AI Preflight pre-commit hook: block secrets before they reach history.
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "⚠️  gitleaks not installed — skipping secret scan."
+  echo "    Install it to enable pre-commit secret detection:"
+  echo "      brew install gitleaks      # macOS"
+  echo "      https://github.com/gitleaks/gitleaks#installing"
+  exit 0
+fi
+
+# Scan only what is staged for this commit.
+gitleaks git --pre-commit --staged --redact --no-banner --config .gitleaks.toml
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo ""
+  echo "❌ gitleaks found a potential secret in your staged changes (see above)."
+  echo "   • Remove the secret, or"
+  echo "   • If it is a test fixture, add it to the allowlist in .gitleaks.toml, or"
+  echo "   • For a genuine false positive, append a '# gitleaks:allow' comment to the line."
+  exit 1
+fi

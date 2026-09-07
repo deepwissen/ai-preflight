@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.8.0
+
+### Secret scanner — accuracy & coverage
+
+- **Fixed false positives** in the entropy layer: Subresource-Integrity / checksum digests (`sha256-…`, `sha512-…`) and base64 `data:` URIs are no longer flagged as secrets.
+- **New detection rules:** npm authentication tokens (`npm_…`) and credentials embedded directly in URLs (`scheme://user:password@host`).
+- **Fixed a config-file bug:** a leading `//` is no longer treated as a comment in config formats (`.npmrc`, `.ini`, `.properties`, `.env`), where it is part of the value — this had been silently hiding secrets in `.npmrc` auth lines.
+- Result: 100% detection with 0 false positives on an independent adversarial corpus.
+
+### Tooling — gitleaks secret scanning
+
+- Added `.gitleaks.toml` (with an allowlist for the scanner's own dummy test fixtures), a CI workflow (`.github/workflows/gitleaks.yml`) that runs on every push/PR, a Husky pre-commit hook, and `scan:secrets` npm scripts.
+
+### Tests
+
+- Added `budget.ts` unit tests (0 → 100% coverage) and regex-injection safety tests. Suite is now 570 tests.
+
+## 0.7.0
+
+### Added
+
+- **Context-budget bands** — context is now classified into `lean` / `heavy` / `bloated` bands based on absolute token count (independent of the tool's context-window limit), surfacing output-quality degradation ("context rot") before truncation is a concern. Configurable via `ai-preflight.budget.heavyTokens` (default 25k) and `ai-preflight.budget.bloatedTokens` (default 75k).
+
+### Security
+
+- **Regex-injection / ReDoS hardening** — workspace content search now escapes keyword input before building `RegExp` patterns. Keywords derived from prompt text and workspace file names could previously contain regex metacharacters, causing `SyntaxError` crashes or pathological backtracking.
+- **Secret test fixtures excluded from Git** — added the secret-scanner's real-looking test fixtures (`test/.env`, `test/id_rsa`, `test/credentials.json`, `test/server.pem`, `test/terraform.tfstate`, `test/.npmrc`, `test/docker-compose.yml`) to `.gitignore` so they cannot be accidentally committed.
+
 ## 0.6.0
 
 ### Added
