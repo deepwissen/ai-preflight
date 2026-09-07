@@ -108,9 +108,16 @@ function getTopReason(result: AnalysisResult): string | undefined {
     return "hardcoded secret found";
   }
 
-  // Priority 3: truncation risk
+  // Priority 3: truncation risk (won't physically fit)
   if (result.contextWindowUsage && result.contextWindowUsage.estimatedUsagePercent > 90) {
     return `${result.contextWindowUsage.estimatedUsagePercent}% context window`;
+  }
+
+  // Priority 3.5: context budget (quality / context rot) — fires even when the
+  // window is far from full, which the truncation % above would miss.
+  if (result.contextWindowUsage?.budgetBand === "bloated") {
+    const k = Math.round(result.contextWindowUsage.estimatedTokens / 1000);
+    return `context bloated ~${k}k`;
   }
 
   // Priority 4: first warning-severity waste pattern
@@ -128,6 +135,7 @@ function getTopReason(result: AnalysisResult): string | undefined {
       "git-conflict-markers": "conflict markers",
       "unsaved-file": "unsaved changes",
       "truncation-risk": "near context limit",
+      "context-budget": "context bloated",
       "data-flow-warning": "sensitive data in context",
       "secret-in-content": "secret in file",
     };

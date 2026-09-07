@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { randomBytes } from "crypto";
 import type { AnalysisResult } from "../core/types.js";
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from "../core/messages.js";
 import { EventBus } from "../core/event-bus.js";
@@ -101,10 +102,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 }
 
 function getNonce(): string {
-  let text = "";
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
-    text += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return text;
+  // Cryptographically secure nonce for the webview CSP (32 hex chars).
+  return randomBytes(16).toString("hex");
 }

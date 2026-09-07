@@ -153,6 +153,74 @@ describe("detectToolAwareIssues", () => {
     });
   });
 
+  // ─── F1b: Context budget pressure (quality / context rot) ───────
+
+  describe("F1b: Context budget pressure", () => {
+    it("classifies a small context as lean and does not warn", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({ toolProfile: cursorProfile() }),
+        { tokenEstimate: { low: 10000, high: 14000, band: "medium", confidence: "medium" } }
+      );
+
+      // midpoint = 12000 < 25k heavy threshold
+      expect(result.contextWindowUsage!.budgetBand).toBe("lean");
+      expect(result.wastePatterns!.map((w) => w.ruleId)).not.toContain("context-budget");
+    });
+
+    it("flags a heavy context with an info-severity warning", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({ toolProfile: cursorProfile() }),
+        { tokenEstimate: { low: 38000, high: 42000, band: "high", confidence: "medium" } }
+      );
+
+      // midpoint = 40000 → heavy (≥25k, <75k)
+      expect(result.contextWindowUsage!.budgetBand).toBe("heavy");
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "context-budget");
+      expect(wp).toBeDefined();
+      expect(wp!.severity).toBe("info");
+    });
+
+    it("flags a bloated context with a warning severity", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({ toolProfile: cursorProfile() }),
+        { tokenEstimate: { low: 78000, high: 82000, band: "high", confidence: "medium" } }
+      );
+
+      // midpoint = 80000 → bloated (≥75k)
+      expect(result.contextWindowUsage!.budgetBand).toBe("bloated");
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "context-budget");
+      expect(wp).toBeDefined();
+      expect(wp!.severity).toBe("warning");
+      expect(wp!.description).toContain("context rot");
+    });
+
+    it("warns on a large context even when the window is far from full", () => {
+      // Gemini 1M: 80k tokens = 8% full but "bloated" — the case raw % misses.
+      const result = detectToolAwareIssues(
+        makeSnapshot({ toolProfile: { toolId: "gemini", detectedVia: "setting" } }),
+        { tokenEstimate: { low: 78000, high: 82000, band: "high", confidence: "medium" } }
+      );
+
+      expect(result.contextWindowUsage!.estimatedUsagePercent).toBeLessThan(10);
+      expect(result.contextWindowUsage!.budgetBand).toBe("bloated");
+      expect(result.wastePatterns!.map((w) => w.ruleId)).toContain("context-budget");
+    });
+
+    it("honors custom budget thresholds from the snapshot", () => {
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: cursorProfile(),
+          budgetThresholds: { heavy: 5000, bloated: 10000 },
+        }),
+        { tokenEstimate: { low: 11000, high: 13000, band: "medium", confidence: "medium" } }
+      );
+
+      // midpoint = 12000 → bloated under the custom 10k threshold
+      expect(result.contextWindowUsage!.budgetBand).toBe("bloated");
+      expect(result.contextWindowUsage!.budgetThresholds).toEqual({ heavy: 5000, bloated: 10000 });
+    });
+  });
+
   // ─── F2: Tool-Specific Instruction Files ────────────────────────
 
   describe("F2: Tool-specific instruction files", () => {
@@ -561,7 +629,7 @@ describe("detectToolAwareIssues", () => {
   // ─── F10: Injection Surface Warning ─────────────────────────────
 
   describe("F10: Injection surface warning", () => {
-    it("fires when context usage > 70% and instruction files exist", () => {
+    it("fires when context is heavy and instruction files exist", () => {
       const result = detectToolAwareIssues(
         makeSnapshot({
           toolProfile: { toolId: "amazon-q", detectedVia: "setting" },
@@ -570,14 +638,31 @@ describe("detectToolAwareIssues", () => {
         { tokenEstimate: { low: 55000, high: 60000, band: "high", confidence: "medium" } }
       );
 
-      // midpoint = 57500, amazon-q = 75k → 77%
+      // midpoint = 57500 → "heavy" (≥25k)
       const wp = result.wastePatterns!.find((w) => w.ruleId === "injection-surface");
       expect(wp).toBeDefined();
       expect(wp!.severity).toBe("info");
       expect(wp!.description).toContain("instruction file(s)");
     });
 
-    it("does not fire when context usage <= 70%", () => {
+    it("fires on a large context even in a huge window (low % full)", () => {
+      // Gemini's 1M window: 60k tokens = only ~6% full, but still "heavy" —
+      // injection surface scales with absolute content, not window fraction.
+      const result = detectToolAwareIssues(
+        makeSnapshot({
+          toolProfile: { toolId: "gemini", detectedVia: "setting" },
+          aiInstructionFiles: [makeInstruction("GEMINI.md", 20, "gemini")],
+        }),
+        { tokenEstimate: { low: 58000, high: 62000, band: "high", confidence: "medium" } }
+      );
+
+      const wp = result.wastePatterns!.find((w) => w.ruleId === "injection-surface");
+      expect(wp).toBeDefined();
+      expect(result.contextWindowUsage!.estimatedUsagePercent).toBeLessThan(10);
+      expect(result.contextWindowUsage!.budgetBand).toBe("heavy");
+    });
+
+    it("does not fire when context is lean (below heavy threshold)", () => {
       const result = detectToolAwareIssues(
         makeSnapshot({
           toolProfile: cursorProfile(),
@@ -603,14 +688,14 @@ describe("detectToolAwareIssues", () => {
       expect(ruleIds).not.toContain("injection-surface");
     });
 
-    it("does not fire at exactly 70%", () => {
-      // amazon-q = 75k, midpoint = 52500 → 70%
+    it("does not fire just below the heavy threshold", () => {
+      // midpoint = 24000 < 25k heavy threshold → "lean"
       const result = detectToolAwareIssues(
         makeSnapshot({
           toolProfile: { toolId: "amazon-q", detectedVia: "setting" },
           aiInstructionFiles: [makeInstruction(".amazonq/rules/main", 20, "amazon-q")],
         }),
-        { tokenEstimate: { low: 52500, high: 52500, band: "high", confidence: "medium" } }
+        { tokenEstimate: { low: 24000, high: 24000, band: "high", confidence: "medium" } }
       );
 
       const ruleIds = result.wastePatterns!.map((w) => w.ruleId);

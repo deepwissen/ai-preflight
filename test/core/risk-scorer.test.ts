@@ -22,6 +22,14 @@ function makeSnapshot(): ContextSnapshot {
   };
 }
 
+// Risk size-baseline is now budget-driven, so the requested tier is expressed
+// as a token count that lands in the matching budget band (lean/heavy/bloated).
+const TIER_TOKENS: Record<"low" | "medium" | "high", number> = {
+  low: 150, // lean   (< 25k)
+  medium: 40_000, // heavy  (25k–75k)
+  high: 80_000, // bloated (> 75k)
+};
+
 function makePartial(
   band: "low" | "medium" | "high",
   wasteCount: number,
@@ -35,14 +43,15 @@ function makePartial(
     suggestion: `fix ${i}`,
   }));
 
+  const tokens = TIER_TOKENS[band];
   return {
     tokenEstimate: {
-      low: 100,
-      high: 200,
+      low: tokens,
+      high: tokens,
       band,
       confidence: "medium",
     },
-    riskLevel: band, // initial risk = band (from token estimator)
+    riskLevel: band, // overwritten by scoreRisk; kept for shape completeness
     wastePatterns,
     ...(integrityIssues ? { instructionFileIssues: integrityIssues } : {}),
   };
@@ -235,5 +244,47 @@ describe("scoreRisk", () => {
       makePartial("low", 1, [])
     );
     expect(result.riskLevel).toBe("medium");
+  });
+
+  // ─── Context-size risk is budget-driven (not the raw token band) ───
+
+  /** Builds a partial whose token-estimate `band` field is set independently
+   *  of the actual token count, to prove the band field is ignored and the
+   *  budget band (from the token count) drives size-risk. */
+  function makeBudgetPartial(
+    band: "low" | "medium" | "high",
+    midpointEachSide: number
+  ): Partial<AnalysisResult> {
+    return {
+      tokenEstimate: { low: midpointEachSide, high: midpointEachSide, band, confidence: "medium" },
+      riskLevel: band,
+      wastePatterns: [],
+    };
+  }
+
+  it("a bloated context is HIGH regardless of the token band field", () => {
+    // 80k tokens → bloated → high, even though the band field says "low".
+    const result = scoreRisk(makeSnapshot(), makeBudgetPartial("low", 80_000));
+    expect(result.riskLevel).toBe("high");
+  });
+
+  it("a heavy context is MEDIUM regardless of the token band field", () => {
+    // 40k tokens → heavy → medium, even though the band field says "low".
+    const result = scoreRisk(makeSnapshot(), makeBudgetPartial("low", 40_000));
+    expect(result.riskLevel).toBe("medium");
+  });
+
+  it("a lean context is LOW even when the token band field says HIGH", () => {
+    // Budget-driven risk REPLACES the band: a tiny (lean) context is LOW.
+    // This is the deliberate relaxation vs. the old 8k token-band cliff.
+    const result = scoreRisk(makeSnapshot(), makeBudgetPartial("high", 500));
+    expect(result.riskLevel).toBe("low");
+  });
+
+  it("honors custom budget thresholds from the snapshot", () => {
+    const snapshot = { ...makeSnapshot(), budgetThresholds: { heavy: 5_000, bloated: 10_000 } };
+    // 12k tokens → bloated under the custom 10k threshold → high.
+    const result = scoreRisk(snapshot, makeBudgetPartial("low", 12_000));
+    expect(result.riskLevel).toBe("high");
   });
 });

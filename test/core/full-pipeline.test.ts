@@ -120,7 +120,7 @@ describe("Full pipeline contract", () => {
     expect(ruleIds).toContain("no-selection-large-file");
   });
 
-  it("LARGE_SELECTION → warns about large selection, risk boosted to HIGH", () => {
+  it("LARGE_SELECTION → warns about large selection, risk boosted to MEDIUM", () => {
     const result = runPipeline(LARGE_SELECTION, PIPELINE);
     assertValidResult(result);
 
@@ -128,8 +128,9 @@ describe("Full pipeline contract", () => {
     expect(ruleIds).toContain("large-selection");
     // large-file should also trigger (3000 lines)
     expect(ruleIds).toContain("large-file");
-    // Risk boost: MEDIUM band + 2 waste patterns → HIGH
-    expect(result.riskLevel).toBe("high");
+    // Selection override ≈ 6k tokens → lean budget → LOW baseline; waste bumps
+    // it to MEDIUM. (Not HIGH: 6k tokens is well below the context-rot bands.)
+    expect(result.riskLevel).toBe("medium");
     // no-selection-large-file should NOT trigger (selection exists)
     expect(ruleIds).not.toContain("no-selection-large-file");
   });

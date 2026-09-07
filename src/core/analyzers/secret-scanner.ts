@@ -15,6 +15,7 @@ const PROVIDER_PREFIXES: Array<{ id: string; label: string; pattern: RegExp }> =
   { id: "slack-token", label: "Slack Token", pattern: /xox[bpras]-[a-zA-Z0-9-]+/ },
   { id: "openai-key", label: "OpenAI API Key", pattern: /sk-proj-[A-Za-z0-9]{20,}/ },
   { id: "gitlab-token", label: "GitLab Token", pattern: /glpat-[A-Za-z0-9_-]{20,}/ },
+  { id: "npm-token", label: "npm Token", pattern: /npm_[A-Za-z0-9]{36}/ },
   {
     id: "private-key-block",
     label: "Private Key",
@@ -85,15 +86,35 @@ const CONNECTION_STRING_PATTERNS: Array<{ id: string; label: string; pattern: Re
     label: ".NET Connection String",
     pattern: /Server\s*=\s*[^;]+;.*Password\s*=\s*[^;]+/i,
   },
+  {
+    // Credentials embedded directly in a URL: scheme://user:password@host
+    // (http(s), ftp, redis, amqp, …). Not covered by isNonSecretValue's URL skip
+    // because that skip only fires in the entropy layer, which runs later.
+    id: "url-embedded-credentials",
+    label: "Credentials in URL",
+    pattern: /\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:[^\s:/@]+@[^\s/]+/i,
+  },
 ];
 
 // ─── Layer 5: Context Filtering ──────────────────────────────────
 
 const COMMENT_LINE = /^\s*(\/\/|#|\/\*|\*\/?\s|\*\s|<!--|--\s|%\s|;\s)/;
+// In config formats (.npmrc, .ini, .properties, .env, YAML, TOML) a leading "//"
+// is NOT a comment — e.g. `.npmrc` auth lines start with `//registry.npmjs.org/…`.
+// Only "#" and ";" are comments there, so treating "//" as one hid real secrets.
+const CONFIG_COMMENT_LINE = /^\s*[#;]/;
 const TEST_FILE_PATTERN = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
 
-function shouldSkipLine(line: string): boolean {
-  return COMMENT_LINE.test(line);
+function isConfigFilePath(path: string, languageId: string): boolean {
+  return (
+    UNQUOTED_VALUE_LANGUAGES.has(languageId) ||
+    /\.(ya?ml|properties|ini|toml|env|cfg|conf)$/i.test(path) ||
+    /(^|\/)\.(npmrc|netrc|git-credentials)$/i.test(path)
+  );
+}
+
+function shouldSkipLine(line: string, isConfigFile: boolean): boolean {
+  return (isConfigFile ? CONFIG_COMMENT_LINE : COMMENT_LINE).test(line);
 }
 
 function shouldSkipFile(path: string, contentLength: number): boolean {
@@ -129,7 +150,12 @@ function isNonSecretValue(value: string): boolean {
     /^arn:/.test(value) || // AWS ARNs
     /^[\w.-]+\.\w{2,}\//.test(value) || // registry.io/image, domain/path
     /:\w[\w.-]*$/.test(value) || // image:tag patterns (cr.io/img:v1.2)
-    /^\d+\.\d+\.\d+/.test(value) // version numbers (1.2.3, 10.0.0.1)
+    /^\d+\.\d+\.\d+/.test(value) || // version numbers (1.2.3, 10.0.0.1)
+    // Subresource-integrity / checksum digests (base64), e.g. "sha256-…", "sha512-…".
+    // High-entropy but not secrets — common in lockfiles and <script integrity>.
+    /^sha(1|224|256|384|512)-[A-Za-z0-9+/=]+$/i.test(value) ||
+    // Data URIs, e.g. "data:image/png;base64,…" — encoded assets, not credentials.
+    /^data:[\w.+-]+\/[\w.+-]+/i.test(value)
   );
 }
 
@@ -167,10 +193,11 @@ export function scanSecrets(
 
   const lines = file.content.split("\n");
   const flaggedLines = new Set<number>();
+  const configFile = isConfigFilePath(file.path, file.languageId);
 
   for (let i = 0; i < lines.length && secretFindings.length < MAX_FINDINGS_PER_FILE; i++) {
     const line = lines[i];
-    if (shouldSkipLine(line)) continue;
+    if (shouldSkipLine(line, configFile)) continue;
 
     // Layer 1: Provider prefixes
     for (const { id, label, pattern } of PROVIDER_PREFIXES) {
@@ -195,11 +222,8 @@ export function scanSecrets(
 
     // Layer 2: Keyword + assignment (quoted or unquoted for config files)
     if (!flaggedLines.has(i)) {
-      const isConfigFile =
-        UNQUOTED_VALUE_LANGUAGES.has(file.languageId) ||
-        /\.(ya?ml|properties|ini|toml|env|cfg|conf)$/i.test(file.path);
       const kwMatch =
-        KEYWORD_PATTERN.exec(line) ?? (isConfigFile ? KEYWORD_UNQUOTED_PATTERN.exec(line) : null);
+        KEYWORD_PATTERN.exec(line) ?? (configFile ? KEYWORD_UNQUOTED_PATTERN.exec(line) : null);
       if (kwMatch) {
         const keyName = kwMatch[1];
         const value = kwMatch[2];
@@ -248,7 +272,7 @@ export function scanSecrets(
   // Layer 3: Entropy scan on quoted strings (skip lines already flagged)
   for (let i = 0; i < lines.length && secretFindings.length < MAX_FINDINGS_PER_FILE; i++) {
     if (flaggedLines.has(i)) continue;
-    if (shouldSkipLine(lines[i])) continue;
+    if (shouldSkipLine(lines[i], configFile)) continue;
 
     QUOTED_STRING_PATTERN.lastIndex = 0;
     let qMatch: RegExpExecArray | null;

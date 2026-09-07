@@ -12,6 +12,10 @@ export interface ContextSnapshot {
   toolProfile: ToolProfile | null;
   ignoreFiles: string[];
 
+  /** Context-budget band thresholds, sourced from config. Analyzer falls back
+   *  to defaults when absent. */
+  budgetThresholds?: BudgetThresholds;
+
   // Not yet captured (always default values)
   referencedFiles: FileInfo[];
   terminalContent: TextBlock | null;
@@ -107,12 +111,29 @@ export interface SecretFinding {
   suggestion: string;
 }
 
+export type BudgetBand = "lean" | "heavy" | "bloated";
+
+export interface BudgetThresholds {
+  /** tokens ≥ heavy   → at least "heavy"   (quality starts to slip) */
+  heavy: number;
+  /** tokens ≥ bloated → "bloated"          (context-rot territory)  */
+  bloated: number;
+}
+
 export interface ContextWindowUsage {
   toolId: AiToolId;
   toolDisplayName: string;
+
+  /** The absolute token count both axes derive from. */
+  estimatedTokens: number;
+
+  // Axis 1 — truncation / fit: physical, measured vs the real window.
   contextWindowTokens: number;
   estimatedUsagePercent: number;
-  estimatedTokens: number;
+
+  // Axis 2 — budget / quality: ≈absolute, window-independent (context rot).
+  budgetBand: BudgetBand;
+  budgetThresholds: BudgetThresholds;
 }
 
 export interface WasteAnnotation {

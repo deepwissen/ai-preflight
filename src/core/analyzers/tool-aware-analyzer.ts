@@ -8,12 +8,14 @@ import type {
   WastePattern,
 } from "../types.js";
 import { AI_TOOLS, getContextWindowTokens } from "../ai-tools.js";
+import { classifyBudget, DEFAULT_BUDGET_THRESHOLDS, midpointTokens } from "../budget.js";
 import { IMPORT_PATTERNS } from "../import-patterns.js";
 
 /**
  * Tool-aware analyzer — runs LAST in the pipeline.
  * Uses the active tool profile to:
- *   F1: Compute context window usage percentage
+ *   F1:  Compute context window usage (truncation %) + budget band (quality)
+ *   F1b: Warn about context budget pressure (context rot) regardless of window %
  *   F2: Detect missing tool-specific instruction files
  *   F3: Check instruction file quality (line counts)
  *   F4: Detect missing ignore files
@@ -64,9 +66,16 @@ export function detectToolAwareIssues(
   detectContextGaps(context, wastePatterns, suggestions, priority);
   priority = (partial.suggestions?.length ?? 0) + suggestions.length + 1;
 
-  // F9: Truncation risk warning
+  // F9: Truncation risk warning (physical window %)
   if (contextWindowUsage) {
     checkTruncationRisk(contextWindowUsage, wastePatterns, suggestions, priority);
+    priority = (partial.suggestions?.length ?? 0) + suggestions.length + 1;
+  }
+
+  // F1b: Budget pressure warning (quality / context rot) — fires on absolute
+  // token count even when the window is far from full (e.g. Gemini's 1M).
+  if (contextWindowUsage) {
+    checkBudgetPressure(contextWindowUsage, wastePatterns, suggestions, priority);
     priority = (partial.suggestions?.length ?? 0) + suggestions.length + 1;
   }
 
@@ -102,15 +111,24 @@ function computeContextWindowUsage(
     context.toolProfile.toolId,
     context.toolProfile.modelId
   );
-  const midpoint = Math.round((tokenEst.low + tokenEst.high) / 2);
+  const midpoint = midpointTokens(tokenEst);
+
+  // Axis 1 — truncation/fit: physical, vs the actual window boundary.
   const pct = contextWindowTokens > 0 ? Math.round((midpoint / contextWindowTokens) * 100) : 0;
+
+  // Axis 2 — budget/quality: absolute, independent of window size. A 60k
+  // context is "heavy" whether the window is 75k (Amazon Q) or 1M (Gemini).
+  const budgetThresholds = context.budgetThresholds ?? DEFAULT_BUDGET_THRESHOLDS;
+  const budgetBand = classifyBudget(midpoint, budgetThresholds);
 
   return {
     toolId: context.toolProfile.toolId,
     toolDisplayName: toolDef.displayName,
+    estimatedTokens: midpoint,
     contextWindowTokens,
     estimatedUsagePercent: pct,
-    estimatedTokens: midpoint,
+    budgetBand,
+    budgetThresholds,
   };
 }
 
@@ -430,6 +448,38 @@ function checkTruncationRisk(
   }
 }
 
+// ─── F1b: Context Budget Pressure (quality / context rot) ─────────
+
+function checkBudgetPressure(
+  usage: ContextWindowUsage,
+  wastePatterns: WastePattern[],
+  suggestions: Suggestion[],
+  priority: number
+): void {
+  if (usage.budgetBand === "lean") return;
+
+  const k = Math.round(usage.estimatedTokens / 1000);
+  const bloated = usage.budgetBand === "bloated";
+
+  wastePatterns.push({
+    ruleId: "context-budget",
+    source: "context-window",
+    description: bloated
+      ? `~${k}k tokens of context — past the point where models reliably use all of it (context rot)`
+      : `~${k}k tokens of context — getting heavy; output quality degrades as context grows`,
+    severity: bloated ? "warning" : "info",
+    suggestion: "Trim to the smallest high-signal set; drop tangential files",
+  });
+  suggestions.push({
+    id: "trim-context-budget",
+    text: bloated
+      ? `~${k}k tokens — large contexts measurably degrade output even below the window limit. Trim to the files this task actually needs.`
+      : `~${k}k tokens of context — keep it lean; remove files not central to this task.`,
+    priority: priority++,
+    dismissed: false,
+  });
+}
+
 // ─── F10: Injection Surface Warning ───────────────────────────────
 
 function checkInjectionSurface(
@@ -439,20 +489,24 @@ function checkInjectionSurface(
   suggestions: Suggestion[],
   priority: number
 ): void {
-  if (usage.estimatedUsagePercent <= 70) return;
+  // Injection surface scales with absolute untrusted content, not window
+  // fraction — gate on the budget band so it fires on large contexts even
+  // in huge windows (e.g. Gemini at 60k = "heavy" but only ~6% full).
+  if (usage.budgetBand === "lean") return;
   if (context.aiInstructionFiles.length === 0) return;
 
   const fileCount = context.aiInstructionFiles.length;
+  const k = Math.round(usage.estimatedTokens / 1000);
   wastePatterns.push({
     ruleId: "injection-surface",
     source: "context-window",
-    description: `Large context (~${usage.estimatedUsagePercent}% full) with ${fileCount} instruction file(s) increases prompt injection surface area`,
+    description: `Large context (~${k}k tokens) with ${fileCount} instruction file(s) increases prompt injection surface area`,
     severity: "info",
     suggestion: "Review instruction files for unexpected content and reduce context size",
   });
   suggestions.push({
     id: "review-injection-surface",
-    text: `Large context (~${usage.estimatedUsagePercent}% full) with ${fileCount} instruction file(s) — review instruction files for unexpected content`,
+    text: `Large context (~${k}k tokens) with ${fileCount} instruction file(s) — review instruction files for unexpected content`,
     priority: priority++,
     dismissed: false,
   });
