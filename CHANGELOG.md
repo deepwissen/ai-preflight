@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.1
+
+### Secret scanner — fewer false positives, wider coverage
+
+- **Fixed entropy-layer false positives on descriptive/structured text.** High-entropy quoted strings that contain whitespace (prose, SPARQL, RDF `@prefix rdf: <http://…> .`, `print("ONTOLOGY EXAMPLE: …")`) or a `://` URI (namespaces, endpoints) are no longer flagged as secrets. Contiguous token secrets are still detected.
+- **Fixed a Markdown blind spot.** A leading `#` is a heading in Markdown/prose (`.md`, `.markdown`, `.mdx`), not a comment — so a secret on a heading line is now scanned. HTML comments (`<!-- … -->`) are still skipped, and `#` remains a comment in code files.
+
 ## 0.8.0
 
 ### Secret scanner — accuracy & coverage

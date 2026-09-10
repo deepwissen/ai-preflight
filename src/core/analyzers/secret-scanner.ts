@@ -103,6 +103,9 @@ const COMMENT_LINE = /^\s*(\/\/|#|\/\*|\*\/?\s|\*\s|<!--|--\s|%\s|;\s)/;
 // is NOT a comment — e.g. `.npmrc` auth lines start with `//registry.npmjs.org/…`.
 // Only "#" and ";" are comments there, so treating "//" as one hid real secrets.
 const CONFIG_COMMENT_LINE = /^\s*[#;]/;
+// In Markdown/prose, a leading "#" is a heading (and "//"/";" are not comments),
+// so only real HTML comments count — otherwise a secret on a heading line is missed.
+const MARKDOWN_COMMENT_LINE = /^\s*<!--/;
 const TEST_FILE_PATTERN = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
 
 function isConfigFilePath(path: string, languageId: string): boolean {
@@ -113,8 +116,20 @@ function isConfigFilePath(path: string, languageId: string): boolean {
   );
 }
 
-function shouldSkipLine(line: string, isConfigFile: boolean): boolean {
-  return (isConfigFile ? CONFIG_COMMENT_LINE : COMMENT_LINE).test(line);
+function isMarkdownFile(path: string, languageId: string): boolean {
+  return languageId === "markdown" || /\.(md|markdown|mdx)$/i.test(path);
+}
+
+/** The comment style differs by file type; picking the wrong one either misses
+ *  secrets (treating a heading/URL as a comment) or scans noise. */
+function commentPatternFor(path: string, languageId: string): RegExp {
+  if (isMarkdownFile(path, languageId)) return MARKDOWN_COMMENT_LINE;
+  if (isConfigFilePath(path, languageId)) return CONFIG_COMMENT_LINE;
+  return COMMENT_LINE;
+}
+
+function shouldSkipLine(line: string, commentPattern: RegExp): boolean {
+  return commentPattern.test(line);
 }
 
 function shouldSkipFile(path: string, contentLength: number): boolean {
@@ -155,7 +170,14 @@ function isNonSecretValue(value: string): boolean {
     // High-entropy but not secrets — common in lockfiles and <script integrity>.
     /^sha(1|224|256|384|512)-[A-Za-z0-9+/=]+$/i.test(value) ||
     // Data URIs, e.g. "data:image/png;base64,…" — encoded assets, not credentials.
-    /^data:[\w.+-]+\/[\w.+-]+/i.test(value)
+    /^data:[\w.+-]+\/[\w.+-]+/i.test(value) ||
+    // Contains whitespace → prose/markup, not a contiguous secret token. Catches
+    // structured strings like RDF "@prefix rdf: <http://…> ." that score high on
+    // entropy. Keyword-based secrets with spaces are still caught by Layer 2.
+    /\s/.test(value) ||
+    // Contains a URL/URI scheme anywhere (namespaces, endpoints). Any *credentialed*
+    // URL is still flagged separately by the connection-string layer.
+    /\w+:\/\//.test(value)
   );
 }
 
@@ -194,10 +216,11 @@ export function scanSecrets(
   const lines = file.content.split("\n");
   const flaggedLines = new Set<number>();
   const configFile = isConfigFilePath(file.path, file.languageId);
+  const commentPattern = commentPatternFor(file.path, file.languageId);
 
   for (let i = 0; i < lines.length && secretFindings.length < MAX_FINDINGS_PER_FILE; i++) {
     const line = lines[i];
-    if (shouldSkipLine(line, configFile)) continue;
+    if (shouldSkipLine(line, commentPattern)) continue;
 
     // Layer 1: Provider prefixes
     for (const { id, label, pattern } of PROVIDER_PREFIXES) {
@@ -272,7 +295,7 @@ export function scanSecrets(
   // Layer 3: Entropy scan on quoted strings (skip lines already flagged)
   for (let i = 0; i < lines.length && secretFindings.length < MAX_FINDINGS_PER_FILE; i++) {
     if (flaggedLines.has(i)) continue;
-    if (shouldSkipLine(lines[i], configFile)) continue;
+    if (shouldSkipLine(lines[i], commentPattern)) continue;
 
     QUOTED_STRING_PATTERN.lastIndex = 0;
     let qMatch: RegExpExecArray | null;
