@@ -646,6 +646,54 @@ describe("scanSecrets — adversarial hardening", () => {
     const r = scan('const r = "redis://user:pass99word@redis-host:6379/0";');
     expect(r.secretFindings.length).toBeGreaterThan(0);
   });
+
+  // Markdown heading-line gap: "#" is a heading in Markdown, not a comment, so a
+  // secret sitting on a heading line must still be scanned.
+  it("flags a secret on a Markdown heading line", () => {
+    const r = scan("# ghp_R8xQ2vN7wZ4kLpM1aB3cD5eF6gH9jK0mN2pQ", "README.md");
+    expect(r.secretFindings.some((f) => f.ruleId === "github-token")).toBe(true);
+  });
+
+  it("flags a secret in Markdown prose", () => {
+    const r = scan("Set your token: ghp_R8xQ2vN7wZ4kLpM1aB3cD5eF6gH9jK0mN2pQ", "docs/setup.md");
+    expect(r.secretFindings.some((f) => f.ruleId === "github-token")).toBe(true);
+  });
+
+  it("still skips real HTML comments in Markdown", () => {
+    const r = scan("<!-- old token was ghp_R8xQ2vN7wZ4kLpM1aB3cD5eF6gH9jK0mN2pQ -->", "README.md");
+    expect(r.secretFindings).toHaveLength(0);
+  });
+
+  it("still treats leading # as a comment in code files", () => {
+    // Regression: the Markdown change must not re-enable scanning of "#" comments
+    // in ordinary source files.
+    const r = scan('# const key = "ghp_R8xQ2vN7wZ4kLpM1aB3cD5eF6gH9jK0mN2pQ"', "src/app.py");
+    expect(r.secretFindings).toHaveLength(0);
+  });
+
+  // Entropy-layer false positive: RDF/Turtle prefix declarations are high-entropy
+  // structured text (URIs + punctuation + spaces), not secrets.
+  it("does NOT flag RDF/Turtle @prefix declarations", () => {
+    const rdf = [
+      'rdf_content.append("@prefix : <http://example.org/> .")',
+      'rdf_content.append("@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .")',
+      'rdf_content.append("@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .")',
+    ].join("\n");
+    const r = scan(rdf, "advanced_knowledge_graph.py");
+    expect(r.secretFindings).toHaveLength(0);
+  });
+
+  it("does NOT flag high-entropy strings that contain spaces (prose/markup)", () => {
+    const r = scan('const q = "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100";');
+    expect(r.secretFindings).toHaveLength(0);
+  });
+
+  it("still flags a genuine contiguous high-entropy token", () => {
+    // Guard against over-correction: a real token (no spaces, no URI) still fires.
+    // Neutral variable name so the entropy layer — not the keyword layer — is exercised.
+    const r = scan('const blob = "a8K3mZp9Qw2LxNvB7yH4jR6tF5gE1cD0uP2qX";');
+    expect(r.secretFindings.some((f) => f.ruleId === "high-entropy")).toBe(true);
+  });
 });
 
 // ─── Shannon Entropy Unit Tests ────────────────────────────────
