@@ -696,6 +696,55 @@ describe("scanSecrets — adversarial hardening", () => {
   });
 });
 
+// ─── Credential lifetime classification ────────────────────────
+describe("scanSecrets — credential lifetime", () => {
+  const scan = (content: string, path = "src/config.ts") =>
+    scanSecrets(makeSnapshot({ activeFile: fileWithContent(content, path) }), {});
+  const first = (content: string, path = "src/config.ts") => scan(content, path).secretFindings![0];
+
+  it("marks a static AWS access key (AKIA) as long-lived", () => {
+    const f = first('const key = "AKIAIOSFODNN7EXAMPLE1";');
+    expect(f.lifetime).toBe("long-lived");
+    expect(f.suggestion).toMatch(/short-lived/i);
+  });
+
+  it("marks an AWS STS session key (ASIA) as short-lived", () => {
+    const f = first('AccessKeyId: "ASIAIOSFODNN7EXAMPLE1"');
+    expect(f.ruleId).toBe("aws-access-key");
+    expect(f.lifetime).toBe("short-lived");
+    expect(f.suggestion).not.toMatch(/short-lived/i);
+  });
+
+  it("marks a private key block as long-lived", () => {
+    const f = first("-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----");
+    expect(f.lifetime).toBe("long-lived");
+  });
+
+  it("marks a GitHub token as long-lived", () => {
+    const f = first('const t = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij";');
+    expect(f.lifetime).toBe("long-lived");
+  });
+
+  it("marks a connection string as long-lived", () => {
+    const f = first('const uri = "mongodb://admin:pass123@host:27017/db";');
+    expect(f.lifetime).toBe("long-lived");
+  });
+
+  it("marks a JWT with an exp claim as short-lived", () => {
+    // {"alg":"HS256","typ":"JWT"} . {"sub":"1","exp":9999999999} . sig
+    const jwt =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjo5OTk5OTk5OTk5fQ.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
+    const f = first(`const t = "${jwt}";`);
+    expect(f.lifetime).toBe("short-lived");
+  });
+
+  it("leaves generic high-entropy findings as unknown lifetime", () => {
+    const f = first('const blob = "a8K3mZp9Qw2LxNvB7yH4jR6tF5gE1cD0uP2qX";');
+    expect(f.ruleId).toBe("high-entropy");
+    expect(f.lifetime).toBe("unknown");
+  });
+});
+
 // ─── Shannon Entropy Unit Tests ────────────────────────────────
 
 describe("shannonEntropy", () => {

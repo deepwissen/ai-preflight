@@ -98,6 +98,14 @@ export interface AnalysisResult {
   outcomeInsights?: OutcomeInsights;
 }
 
+/**
+ * Credential lifetime — long-lived/static credentials in agent reach are a
+ * bigger risk than short-lived tokens. "long-lived" and "short-lived" describe
+ * the credential *type* (e.g. static IAM key vs STS session token), not a proven
+ * expiry; "unknown" is used when the type carries no lifetime signal.
+ */
+export type SecretLifetime = "long-lived" | "short-lived" | "unknown";
+
 export interface SecretFinding {
   id: string;
   filePath: string;
@@ -109,6 +117,7 @@ export interface SecretFinding {
   description: string;
   matchPreview: string;
   suggestion: string;
+  lifetime?: SecretLifetime;
 }
 
 export type BudgetBand = "lean" | "heavy" | "bloated";
