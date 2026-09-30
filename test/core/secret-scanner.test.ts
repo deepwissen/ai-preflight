@@ -743,6 +743,17 @@ describe("scanSecrets — credential lifetime", () => {
     expect(f.ruleId).toBe("high-entropy");
     expect(f.lifetime).toBe("unknown");
   });
+
+  it("classifies a detected JWT WITHOUT an exp claim as unknown (not short-lived)", () => {
+    // Boundary: lifetime only applies to *detected* secrets. This JWT is high-entropy
+    // enough to be flagged, its payload {"sub":"user123","role":"admin","iat":...} has
+    // NO exp — so it must not be treated as short-lived.
+    const jwtNoExp =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzAwMDAwMDAwfQ.K7pQ2mZx9RtVn4LbW8yE3jF6gD1cA5sN0uP2qXrJ8v";
+    const f = first(`const t = "${jwtNoExp}";`);
+    expect(f.ruleId).toBe("high-entropy");
+    expect(f.lifetime).toBe("unknown");
+  });
 });
 
 // ─── Shannon Entropy Unit Tests ────────────────────────────────
