@@ -511,3 +511,53 @@ describe("scanMcpConfigs", () => {
     expect(issue.id).toContain(".cursor/mcp.json");
   });
 });
+
+// ─── Tool/server hygiene (over-broad grants + unpinned sources) ──
+describe("scanMcpConfigs — config hygiene", () => {
+  const scan = (config: Record<string, unknown>) =>
+    scanMcpConfigs(makeSnapshot([mcpConfig(JSON.stringify(config))]), {})
+      .instructionFileIssues!;
+  const srv = (server: Record<string, unknown>) => ({ mcpServers: { foo: server } });
+
+  // Over-broad tool grants
+  it("flags a wildcard auto-approve grant", () => {
+    const r = scan(srv({ command: "node", args: ["s.js"], autoApprove: ["*"] }));
+    expect(r.some((i) => i.issue === "mcp-risky-config" && /auto-approves ALL/.test(i.description))).toBe(true);
+  });
+
+  it("flags a blanket `alwaysAllow: true` grant", () => {
+    const r = scan(srv({ command: "node", args: ["s.js"], alwaysAllow: true }));
+    expect(r.some((i) => i.issue === "mcp-risky-config")).toBe(true);
+  });
+
+  it("does NOT flag a specific tool allowlist", () => {
+    const r = scan(srv({ command: "node", args: ["s.js"], autoApprove: ["read_file", "list_dir"] }));
+    expect(r.some((i) => /auto-approves ALL/.test(i.description))).toBe(false);
+  });
+
+  // Unpinned server sources
+  it("flags an unpinned npx package (no version)", () => {
+    const r = scan(srv({ command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem"] }));
+    expect(r.some((i) => i.issue === "mcp-unpinned-server")).toBe(true);
+  });
+
+  it("flags an @latest package as unpinned", () => {
+    const r = scan(srv({ command: "npx", args: ["-y", "some-mcp-server@latest"] }));
+    expect(r.some((i) => i.issue === "mcp-unpinned-server")).toBe(true);
+  });
+
+  it("does NOT flag a version-pinned package", () => {
+    const r = scan(srv({ command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem@1.2.3"] }));
+    expect(r.some((i) => i.issue === "mcp-unpinned-server")).toBe(false);
+  });
+
+  it("does NOT treat a local (non-runner) command as unpinned", () => {
+    const r = scan(srv({ command: "node", args: ["./dist/server.js"] }));
+    expect(r.some((i) => i.issue === "mcp-unpinned-server")).toBe(false);
+  });
+
+  it("flags unpinned uvx packages too", () => {
+    const r = scan(srv({ command: "uvx", args: ["mcp-server-git"] }));
+    expect(r.some((i) => i.issue === "mcp-unpinned-server")).toBe(true);
+  });
+});
