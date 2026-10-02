@@ -11,6 +11,7 @@ const MCP_ISSUES = new Set<InstructionFileIssue["issue"]>([
   "mcp-suspicious-tool",
   "mcp-unknown-server",
   "mcp-risky-config",
+  "mcp-unpinned-server",
 ]);
 
 const CLOSEABLE_WASTE_RULES = new Set([

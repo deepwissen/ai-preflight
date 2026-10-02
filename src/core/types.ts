@@ -164,7 +164,8 @@ export interface InstructionFileIssue {
     | "mcp-embedded-secret"
     | "mcp-suspicious-tool"
     | "mcp-unknown-server"
-    | "mcp-risky-config";
+    | "mcp-risky-config"
+    | "mcp-unpinned-server";
   severity?: "info" | "warning" | "error";
   lineCount?: number;
   lineNumber?: number;

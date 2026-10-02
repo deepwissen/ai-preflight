@@ -222,7 +222,8 @@ function renderResponse(
       i.issue === "mcp-embedded-secret" ||
       i.issue === "mcp-suspicious-tool" ||
       i.issue === "mcp-unknown-server" ||
-      i.issue === "mcp-risky-config"
+      i.issue === "mcp-risky-config" ||
+      i.issue === "mcp-unpinned-server"
   );
   if (mcpIssues.length > 0) {
     response.markdown("### MCP Config Security\n");

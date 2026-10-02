@@ -88,6 +88,8 @@ export function scanMcpConfigs(
       scanMcpToolDescriptions(config.path, serverName, serverConfig, instructionFileIssues);
       scanMcpServers(config.path, serverName, serverConfig, instructionFileIssues);
       scanMcpRiskyConfig(config.path, serverName, serverConfig, instructionFileIssues);
+      scanMcpToolGrants(config.path, serverName, serverConfig, instructionFileIssues);
+      scanMcpServerPinning(config.path, serverName, serverConfig, instructionFileIssues);
     }
   }
 
@@ -348,6 +350,83 @@ function scanMcpRiskyConfig(
   }
 }
 
+// Fields various MCP clients use to auto-approve tool calls without asking.
+const AUTO_APPROVE_FIELDS = ["autoApprove", "alwaysAllow", "autoApproveTools"];
+
+/**
+ * Over-broad tool grants: an MCP server that is allowed to run ALL its tools
+ * without confirmation (a "*" wildcard or a blanket `true`). A specific,
+ * deliberate allowlist of tool names is NOT flagged.
+ */
+function scanMcpToolGrants(
+  filePath: string,
+  serverName: string,
+  serverConfig: Record<string, unknown>,
+  issues: InstructionFileIssue[]
+): void {
+  for (const field of AUTO_APPROVE_FIELDS) {
+    const grant = serverConfig[field];
+    const blanket = grant === true;
+    const wildcard = Array.isArray(grant) && grant.some((g) => g === "*");
+    if (blanket || wildcard) {
+      issues.push(
+        makeIssue(
+          filePath,
+          "mcp-risky-config",
+          "warning",
+          serverName,
+          field,
+          `Server "${serverName}" auto-approves ALL tool calls (${field}: ${blanket ? "true" : '"*"'}) — over-broad grant`
+        )
+      );
+      return; // one grant finding per server is enough
+    }
+  }
+}
+
+// Package runners where an unpinned spec pulls "latest" at launch (supply-chain risk).
+const PACKAGE_RUNNERS = /(^|\/)(npx|uvx|bunx)$/;
+
+/** True when a package spec names an exact version (not missing / not "latest"). */
+function isPinnedPackage(pkg: string): boolean {
+  const withoutScope = pkg.replace(/^@[^/]+\//, ""); // drop leading npm scope @scope/
+  const versionMatch = withoutScope.match(/@([^@]+)$/);
+  if (!versionMatch) return false; // no version → unpinned
+  return !/^(latest|next|canary|\*)$/i.test(versionMatch[1]);
+}
+
+/**
+ * Unpinned MCP server source: a server launched via npx/uvx/bunx without a
+ * pinned package version re-fetches "latest" on every run — a supply-chain
+ * surface (a compromised release lands silently).
+ */
+function scanMcpServerPinning(
+  filePath: string,
+  serverName: string,
+  serverConfig: Record<string, unknown>,
+  issues: InstructionFileIssue[]
+): void {
+  const command = serverConfig.command;
+  const args = serverConfig.args;
+  if (typeof command !== "string" || !PACKAGE_RUNNERS.test(command)) return;
+  if (!Array.isArray(args)) return;
+
+  // First non-flag arg is the package spec (skips -y, --yes, etc.).
+  const pkg = args.find((a): a is string => typeof a === "string" && !a.startsWith("-"));
+  if (!pkg || isPinnedPackage(pkg)) return;
+
+  issues.push(
+    makeIssue(
+      filePath,
+      "mcp-unpinned-server",
+      "warning",
+      serverName,
+      "args",
+      `Server "${serverName}" runs an unpinned package (\`${pkg}\`) — pulls latest on every launch`
+    )
+  );
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────
 
 function makeIssue(
@@ -371,7 +450,9 @@ function makeIssue(
           ? "Review tool description for hidden or malicious instructions"
           : issue === "mcp-unknown-server"
             ? "Verify this MCP server is trusted — use HTTPS for external connections"
-            : "Review MCP server configuration",
+            : issue === "mcp-unpinned-server"
+              ? "Pin the MCP server to an exact version to avoid pulling a compromised release"
+              : "Review MCP server configuration",
   };
 }
 
