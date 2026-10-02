@@ -209,6 +209,21 @@ export function ContextList({ result, onAction }: Props) {
                 }}
               >
                 {f.severity === "error" ? "\u274C" : "\u26a0"} {f.label} (line {f.lineNumber})
+                {f.lifetime === "long-lived" && (
+                  <span
+                    style={{
+                      marginLeft: "6px",
+                      fontSize: "10px",
+                      padding: "0 4px",
+                      borderRadius: "3px",
+                      opacity: 0.85,
+                      border: "1px solid var(--vscode-editorWarning-foreground)",
+                    }}
+                    title="Long-lived / non-expiring credential type"
+                  >
+                    long-lived
+                  </span>
+                )}
               </li>
             ))}
           </ul>

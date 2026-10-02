@@ -209,7 +209,8 @@ function renderResponse(
     response.markdown("### Secrets Detected\n");
     for (const f of result.secretFindings) {
       const icon = f.severity === "error" ? "$(error)" : "$(warning)";
-      response.markdown(`- ${icon} **${f.label}** — ${f.description}\n`);
+      const lifetimeTag = f.lifetime === "long-lived" ? " _(long-lived)_" : "";
+      response.markdown(`- ${icon} **${f.label}**${lifetimeTag} — ${f.description}\n`);
       response.markdown(`  \`${f.matchPreview}\`\n`);
     }
     response.markdown(`\n$(lightbulb) **Action:** ${result.secretFindings[0].suggestion}\n\n`);

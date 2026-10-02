@@ -1,9 +1,17 @@
-import type { AnalysisResult, ContextSnapshot, SecretFinding, WastePattern } from "../types.js";
+import type {
+  AnalysisResult,
+  ContextSnapshot,
+  SecretFinding,
+  SecretLifetime,
+  WastePattern,
+} from "../types.js";
 
 const MAX_FINDINGS_PER_FILE = 10;
 const ENTROPY_THRESHOLD = 4.5;
 const MIN_ENTROPY_LENGTH = 8;
 const MOVE_TO_ENV = "Move to environment variables or a secrets manager before prompting";
+const PREFER_SHORT_LIVED =
+  "Non-expiring credential in agent reach — move it to a secrets manager and prefer a short-lived, rotated credential";
 
 // ─── Layer 1: Known Provider Prefixes ────────────────────────────
 
@@ -192,6 +200,59 @@ function fileName(path: string): string {
   return path.split("/").pop() ?? path;
 }
 
+// ─── Credential lifetime classification ──────────────────────────
+
+// Provider-prefix rule IDs whose credential type is static / non-expiring.
+const LONG_LIVED_RULE_IDS = new Set([
+  "aws-access-key", // AKIA (static IAM); ASIA session tokens handled separately
+  "github-token",
+  "gitlab-token",
+  "npm-token",
+  "google-api-key",
+  "stripe-key",
+  "slack-token",
+  "openai-key",
+  "private-key-block",
+  "connection-string-uri",
+  "connection-string-jdbc",
+  "connection-string-dotnet",
+  "url-embedded-credentials",
+]);
+
+const JWT_PATTERN = /^eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
+/** A JWT that carries an `exp` claim is a short-lived token by design. */
+function jwtHasExpiry(value: string): boolean {
+  if (!JWT_PATTERN.test(value)) return false;
+  try {
+    const b64 = value.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = JSON.parse(atob(padded)) as Record<string, unknown>;
+    return typeof json.exp === "number";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Classify how long-lived a detected credential is. Long-lived/static
+ * credentials in agent reach are the higher-risk artefact.
+ */
+function classifyLifetime(ruleId: string, value: string): SecretLifetime {
+  // Ephemeral by construction.
+  if (ruleId === "aws-access-key" && /ASIA[0-9A-Z]{16}/.test(value)) return "short-lived";
+  if (jwtHasExpiry(value)) return "short-lived";
+
+  if (LONG_LIVED_RULE_IDS.has(ruleId)) return "long-lived";
+
+  // keyword-secret / high-entropy with no type signal.
+  return "unknown";
+}
+
+function suggestionFor(lifetime: SecretLifetime): string {
+  return lifetime === "long-lived" ? PREFER_SHORT_LIVED : MOVE_TO_ENV;
+}
+
 // ─── Main Scanner ────────────────────────────────────────────────
 
 /**
@@ -226,6 +287,7 @@ export function scanSecrets(
     for (const { id, label, pattern } of PROVIDER_PREFIXES) {
       const match = pattern.exec(line);
       if (match) {
+        const lifetime = classifyLifetime(id, match[0]);
         secretFindings.push({
           id: `${id}-${file.path}-${i + 1}`,
           filePath: file.path,
@@ -236,7 +298,8 @@ export function scanSecrets(
           label,
           description: `${label} found in ${fileName(file.path)} line ${i + 1}`,
           matchPreview: redact(match[0]),
-          suggestion: MOVE_TO_ENV,
+          suggestion: suggestionFor(lifetime),
+          lifetime,
         });
         flaggedLines.add(i);
         break; // One finding per line for Layer 1
@@ -251,6 +314,7 @@ export function scanSecrets(
         const keyName = kwMatch[1];
         const value = kwMatch[2];
         if (!isPlaceholder(value)) {
+          const lifetime = classifyLifetime("keyword-secret", value);
           secretFindings.push({
             id: `keyword-${keyName}-${file.path}-${i + 1}`,
             filePath: file.path,
@@ -261,7 +325,8 @@ export function scanSecrets(
             label: "Hardcoded secret",
             description: `Hardcoded ${keyName} in ${fileName(file.path)} line ${i + 1}`,
             matchPreview: `${keyName} = "${redact(value)}"`,
-            suggestion: MOVE_TO_ENV,
+            suggestion: suggestionFor(lifetime),
+            lifetime,
           });
           flaggedLines.add(i);
         }
@@ -273,6 +338,7 @@ export function scanSecrets(
       for (const { id, label, pattern } of CONNECTION_STRING_PATTERNS) {
         const csMatch = pattern.exec(line);
         if (csMatch) {
+          const lifetime = classifyLifetime(id, csMatch[0]);
           secretFindings.push({
             id: `${id}-${file.path}-${i + 1}`,
             filePath: file.path,
@@ -283,7 +349,8 @@ export function scanSecrets(
             label,
             description: `${label} in ${fileName(file.path)} line ${i + 1}`,
             matchPreview: redact(csMatch[0]),
-            suggestion: MOVE_TO_ENV,
+            suggestion: suggestionFor(lifetime),
+            lifetime,
           });
           flaggedLines.add(i);
           break;
@@ -310,6 +377,7 @@ export function scanSecrets(
 
       const entropy = shannonEntropy(value);
       if (entropy > ENTROPY_THRESHOLD) {
+        const lifetime = classifyLifetime("high-entropy", value);
         secretFindings.push({
           id: `high-entropy-${file.path}-${i + 1}`,
           filePath: file.path,
@@ -320,7 +388,8 @@ export function scanSecrets(
           label: "High-entropy string",
           description: `Potential secret (entropy ${entropy.toFixed(1)}) in ${fileName(file.path)} line ${i + 1}`,
           matchPreview: redact(value),
-          suggestion: MOVE_TO_ENV,
+          suggestion: suggestionFor(lifetime),
+          lifetime,
         });
         flaggedLines.add(i);
         break; // One entropy finding per line
