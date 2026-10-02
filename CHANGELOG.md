@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.0
+
+Widens Preflight's guard from "before it reaches the AI" to "before an agent acts on it" — hardening the inbound data, credentials, and tool configs within an agent's reach.
+
+### Added
+
+- **Trap-file scanner** — flags content that is safe to *read* but not safe to *auto-process*:
+  - Unsafe deserialization calls in source (`pickle`/`torch`/`joblib`/`dill`/`marshal.load`, `numpy.load(allow_pickle=True)`, `yaml.load` without a safe loader).
+  - Trap markers in data files (`.json`/`.yaml`): template expressions (`{{…}}`) in data fields, and external/indirect references (`reference://`, fsspec caches). GitHub Actions `${{ }}` and Helm/Ansible/workflow template dirs are not flagged.
+- **MCP tool/server hygiene** — extends the MCP config scanner with:
+  - Over-broad tool grants (`autoApprove`/`alwaysAllow` wildcards or blanket `true`).
+  - Unpinned server sources (`npx`/`uvx`/`bunx` without a pinned version, or `@latest`) — a supply-chain surface.
+- **Credential lifetime axis** — secret findings are now classified `long-lived` / `short-lived` / `unknown`. Static credentials (AWS `AKIA`, PATs, private keys, connection strings) in agent reach get a stronger nudge; ephemeral tokens (AWS `ASIA`, JWTs with an `exp` claim) are de-emphasised.
+
+All analysis stays local and detect-and-explain only — nothing is modified or sent anywhere.
+
 ## 0.8.1
 
 ### Secret scanner — fewer false positives, wider coverage
