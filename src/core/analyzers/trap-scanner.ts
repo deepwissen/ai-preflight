@@ -66,7 +66,8 @@ const TEMPLATE_EXPR = /(?<!\$)\{\{\s*[^}]+\}\}/;
 // Indirect/external data references — "the real payload lives elsewhere".
 const EXTERNAL_REF = /\breference:\/\/|\b\w+cache::|::(?:https?|s3|gs|gcs|az):\/\//i;
 // Paths where {{ }} is legitimate templating (Helm, Ansible, GitHub Actions…).
-const TEMPLATE_CONTEXT = /(^|\/)(templates?|charts?|roles|playbooks?|ansible)(\/|$)|\.github\/workflows\/|helm/i;
+const TEMPLATE_CONTEXT =
+  /(^|\/)(templates?|charts?|roles|playbooks?|ansible)(\/|$)|\.github\/workflows\/|helm/i;
 
 export function detectTraps(
   context: ContextSnapshot,
