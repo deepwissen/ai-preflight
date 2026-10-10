@@ -1,4 +1,4 @@
-import type { BudgetBand, ContextWindowUsage } from "../../core/types.js";
+import type { BudgetBand, ContextWindowUsage } from "@deepwissen/preflight-core";
 
 interface Props {
   usage: ContextWindowUsage | null;

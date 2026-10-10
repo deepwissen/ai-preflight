@@ -1,7 +1,10 @@
 import { render } from "preact";
 import { useState, useEffect } from "preact/hooks";
-import type { AnalysisResult } from "../core/types.js";
-import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from "../core/messages.js";
+import type { AnalysisResult } from "@deepwissen/preflight-core";
+import type {
+  ExtensionToWebviewMessage,
+  WebviewToExtensionMessage,
+} from "@deepwissen/preflight-core";
 import { RiskBadge } from "./components/risk-badge.js";
 import { ContextList } from "./components/context-list.js";
 import { TokenDisplay } from "./components/token-display.js";

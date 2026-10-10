@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { EventBus } from "./core/event-bus.js";
-import { runPipeline } from "./core/pipeline.js";
+import { EventBus } from "@deepwissen/preflight-core";
+import { runPipeline } from "@deepwissen/preflight-core";
 import {
   estimateTokens,
   detectWaste,
@@ -11,17 +11,17 @@ import {
   scoreRisk,
   detectPositiveSignals,
   detectToolAwareIssues,
-} from "./core/analyzers/index.js";
+} from "@deepwissen/preflight-core";
 import { ContextBridge } from "./platform/context-bridge.js";
 import { SidebarProvider } from "./platform/sidebar-provider.js";
 import { StatusBar } from "./platform/status-bar.js";
 import { registerCommands } from "./platform/commands.js";
-import { createDismissalTracker } from "./core/dismissal-tracker.js";
-import type { DismissalStore } from "./core/dismissal-tracker.js";
+import { createDismissalTracker } from "@deepwissen/preflight-core";
+import type { DismissalStore } from "@deepwissen/preflight-core";
 import { registerChatParticipant } from "./platform/chat-participant.js";
-import { OutcomeTracker } from "./core/outcome-tracker.js";
-import type { OutcomeStore } from "./core/outcome-tracker.js";
-import type { AnalyzerStep, SessionRecord } from "./core/types.js";
+import { OutcomeTracker } from "@deepwissen/preflight-core";
+import type { OutcomeStore } from "@deepwissen/preflight-core";
+import type { AnalyzerStep, SessionRecord } from "@deepwissen/preflight-core";
 
 const DISMISSAL_KEY = "ai-preflight.dismissedSuggestions";
 
@@ -99,7 +99,7 @@ function activateInternal(context: vscode.ExtensionContext): void {
   registerChatParticipant(context, contextBridge, pipelineSteps, dismissalTracker);
 
   // 5. Connect: context changes → pipeline → dismissals → results
-  let lastSnapshot: import("./core/types.js").ContextSnapshot | null = null;
+  let lastSnapshot: import("@deepwissen/preflight-core").ContextSnapshot | null = null;
 
   eventBus.on("context:updated", (snapshot) => {
     lastSnapshot = snapshot;

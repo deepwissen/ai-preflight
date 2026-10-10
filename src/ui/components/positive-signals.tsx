@@ -1,4 +1,4 @@
-import type { PositiveSignal } from "../../core/types.js";
+import type { PositiveSignal } from "@deepwissen/preflight-core";
 
 interface Props {
   signals: PositiveSignal[];

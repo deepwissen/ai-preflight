@@ -6,9 +6,9 @@ import type {
   InstructionFileInfo,
   ToolProfile,
   AiToolId,
-} from "../core/types.js";
-import { MAX_SELECTION_CHARS, DEBOUNCE_MS } from "../core/types.js";
-import { EventBus } from "../core/event-bus.js";
+} from "@deepwissen/preflight-core";
+import { MAX_SELECTION_CHARS, DEBOUNCE_MS } from "@deepwissen/preflight-core";
+import { EventBus } from "@deepwissen/preflight-core";
 
 const CONFLICT_MARKER_PATTERN = /^<{7}\s|^={7}$|^>{7}\s/m;
 
@@ -20,7 +20,7 @@ export class ContextBridge {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private disposables: vscode.Disposable[] = [];
   private aiInstructionFilesCache: InstructionFileInfo[] = [];
-  private mcpConfigFilesCache: import("../core/types.js").McpConfigFileInfo[] = [];
+  private mcpConfigFilesCache: import("@deepwissen/preflight-core").McpConfigFileInfo[] = [];
   private ignoreFilesCache: string[] = [];
   private toolProfileCache: ToolProfile | null = null;
   private editCounts = new Map<string, { count: number; lastTimestamp: number }>();
@@ -325,7 +325,7 @@ export class ContextBridge {
   }
 
   private async detectMcpConfigFiles(): Promise<void> {
-    const files: import("../core/types.js").McpConfigFileInfo[] = [];
+    const files: import("@deepwissen/preflight-core").McpConfigFileInfo[] = [];
     for (const pattern of ContextBridge.MCP_CONFIG_PATTERNS) {
       try {
         const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 5);

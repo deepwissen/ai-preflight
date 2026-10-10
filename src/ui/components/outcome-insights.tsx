@@ -1,4 +1,4 @@
-import type { OutcomeInsights as OutcomeInsightsType } from "../../core/types.js";
+import type { OutcomeInsights as OutcomeInsightsType } from "@deepwissen/preflight-core";
 
 interface Props {
   insights?: OutcomeInsightsType;

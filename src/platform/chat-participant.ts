@@ -5,17 +5,17 @@ import type {
   PromptAnalysis,
   WastePattern,
   WorkspaceMatch,
-} from "../core/types.js";
+} from "@deepwissen/preflight-core";
 import { ContextBridge } from "./context-bridge.js";
-import { runPipeline } from "../core/pipeline.js";
-import type { createDismissalTracker } from "../core/dismissal-tracker.js";
-import { analyzePrompt, extractIntentKeywords } from "../core/analyzers/prompt-analyzer.js";
+import { runPipeline } from "@deepwissen/preflight-core";
+import type { createDismissalTracker } from "@deepwissen/preflight-core";
+import { analyzePrompt, extractIntentKeywords } from "@deepwissen/preflight-core";
 import { searchWorkspace } from "./workspace-searcher.js";
 import {
   rankWorkspaceMatches,
   groupWorkspaceMatches,
   formatMatchReason,
-} from "../core/analyzers/workspace-ranker.js";
+} from "@deepwissen/preflight-core";
 
 type DismissalTracker = ReturnType<typeof createDismissalTracker>;
 

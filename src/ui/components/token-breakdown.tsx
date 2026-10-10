@@ -1,4 +1,4 @@
-import type { FileTokenBreakdown } from "../../core/types.js";
+import type { FileTokenBreakdown } from "@deepwissen/preflight-core";
 
 interface Props {
   breakdown: FileTokenBreakdown[];

@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import type { AnalysisResult, RiskLevel } from "../core/types.js";
-import { EventBus } from "../core/event-bus.js";
+import type { AnalysisResult, RiskLevel } from "@deepwissen/preflight-core";
+import { EventBus } from "@deepwissen/preflight-core";
 
 /**
  * Status bar indicator showing prompt risk level at a glance.

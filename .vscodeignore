@@ -24,3 +24,4 @@ SECURITY.md
 CODE_OF_CONDUCT.md
 coverage/**
 **/*.map
+.npmrc
