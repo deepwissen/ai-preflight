@@ -1,8 +1,11 @@
 import * as vscode from "vscode";
 import { randomBytes } from "crypto";
-import type { AnalysisResult } from "../core/types.js";
-import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from "../core/messages.js";
-import { EventBus } from "../core/event-bus.js";
+import type { AnalysisResult } from "@deepwissen/preflight-core";
+import type {
+  ExtensionToWebviewMessage,
+  WebviewToExtensionMessage,
+} from "@deepwissen/preflight-core";
+import { EventBus } from "@deepwissen/preflight-core";
 import { executeAction } from "./action-executor.js";
 
 /**

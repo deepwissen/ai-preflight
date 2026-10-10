@@ -1,4 +1,4 @@
-import type { Suggestion, SuggestionAction, WasteAnnotation } from "../../core/types.js";
+import type { Suggestion, SuggestionAction, WasteAnnotation } from "@deepwissen/preflight-core";
 
 interface Props {
   suggestions: Suggestion[];

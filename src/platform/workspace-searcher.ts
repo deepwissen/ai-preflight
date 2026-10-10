@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import type { WorkspaceMatch } from "../core/types.js";
-import { extractImportPaths } from "../core/import-patterns.js";
+import type { WorkspaceMatch } from "@deepwissen/preflight-core";
+import { extractImportPaths } from "@deepwissen/preflight-core";
 
 const MAX_RESULTS = 20;
 const IMPORT_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.js"];

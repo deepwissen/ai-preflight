@@ -1,4 +1,4 @@
-import type { TokenEstimate } from "../../core/types.js";
+import type { TokenEstimate } from "@deepwissen/preflight-core";
 
 interface Props {
   estimate: TokenEstimate;

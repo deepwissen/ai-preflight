@@ -17,3 +17,5 @@ test/id_rsa
 test/server.pem
 test/terraform.tfstate
 test/docker-compose.yml
+test/test_large_config.yml
+test/docker-compose.example.yml

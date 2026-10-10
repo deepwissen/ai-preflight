@@ -1,15 +1,15 @@
 import * as vscode from "vscode";
-import type { AnalyzerStep } from "../core/types.js";
-import { runPipeline } from "../core/pipeline.js";
-import { exportContext } from "../core/context-export.js";
+import type { AnalyzerStep } from "@deepwissen/preflight-core";
+import { runPipeline } from "@deepwissen/preflight-core";
+import { exportContext } from "@deepwissen/preflight-core";
 import type { ContextBridge } from "./context-bridge.js";
-import { EventBus } from "../core/event-bus.js";
+import { EventBus } from "@deepwissen/preflight-core";
 import { executeAction } from "./action-executor.js";
 
 interface DismissalApplier {
   apply(
-    suggestions: import("../core/types.js").Suggestion[]
-  ): import("../core/types.js").Suggestion[];
+    suggestions: import("@deepwissen/preflight-core").Suggestion[]
+  ): import("@deepwissen/preflight-core").Suggestion[];
 }
 
 /**

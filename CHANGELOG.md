@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+### Internal
+
+- Detection engine extracted to the shared `@deepwissen/preflight-core` package and consumed by the extension. No user-facing behaviour change — same analyzers, now shared with the `vet` CLI (one engine, many frontends).
+
 ## 0.9.0
 
 Widens Preflight's guard from "before it reaches the AI" to "before an agent acts on it" — hardening the inbound data, credentials, and tool configs within an agent's reach.

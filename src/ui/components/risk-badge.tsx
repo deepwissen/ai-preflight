@@ -1,4 +1,4 @@
-import type { RiskLevel } from "../../core/types.js";
+import type { RiskLevel } from "@deepwissen/preflight-core";
 
 const COLORS: Record<RiskLevel, string> = {
   low: "#4caf50",

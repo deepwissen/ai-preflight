@@ -1,4 +1,8 @@
-import type { AnalysisResult, InstructionFileIssue, SuggestionAction } from "../../core/types.js";
+import type {
+  AnalysisResult,
+  InstructionFileIssue,
+  SuggestionAction,
+} from "@deepwissen/preflight-core";
 
 const INTEGRITY_ISSUES = new Set<InstructionFileIssue["issue"]>([
   "hidden-unicode",
