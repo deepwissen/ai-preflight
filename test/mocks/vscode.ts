@@ -112,6 +112,7 @@ export const state = {
   shown: [] as Array<{ uri: Uri; options?: unknown }>,
   executed: [] as Array<{ command: string; args: unknown[] }>,
   registered: [] as Array<{ id: string; callback: (...a: unknown[]) => unknown }>,
+  infoMessages: [] as string[],
 };
 
 export function reset(): void {
@@ -129,6 +130,8 @@ export function reset(): void {
   state.shown = [];
   state.executed = [];
   state.registered = [];
+  state.infoMessages = [];
+  env.clipboard._text = "";
 }
 
 function asRelative(input: Uri | string): string {
@@ -157,6 +160,10 @@ export const window = {
   },
   async showTextDocument(uri: Uri, options?: unknown): Promise<void> {
     state.shown.push({ uri, options });
+  },
+  async showInformationMessage(message: string): Promise<undefined> {
+    state.infoMessages.push(message);
+    return undefined;
   },
   createStatusBarItem() {
     return { text: "", tooltip: "", command: "", color: undefined, backgroundColor: undefined, show() {}, hide() {}, dispose() {} };
