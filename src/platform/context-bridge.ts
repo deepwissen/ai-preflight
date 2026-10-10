@@ -9,6 +9,7 @@ import type {
 } from "@deepwissen/preflight-core";
 import { MAX_SELECTION_CHARS, DEBOUNCE_MS } from "@deepwissen/preflight-core";
 import { EventBus } from "@deepwissen/preflight-core";
+import { countCommentLines, isInstructionFile, isMcpConfigFile } from "./context-helpers.js";
 
 const CONFLICT_MARKER_PATTERN = /^<{7}\s|^={7}$|^>{7}\s/m;
 
@@ -47,7 +48,7 @@ export class ContextBridge {
       // Re-scan instruction/MCP files when they are saved (content may have changed)
       vscode.workspace.onDidSaveTextDocument((doc) => {
         const relativePath = vscode.workspace.asRelativePath(doc.uri);
-        if (this.isInstructionFile(relativePath) || this.isMcpConfigFile(relativePath)) {
+        if (isInstructionFile(relativePath) || isMcpConfigFile(relativePath)) {
           void this.initAndCapture();
         }
       }),
@@ -161,7 +162,7 @@ export class ContextBridge {
     let hasConflictMarkers = false;
 
     if (isActive) {
-      commentLineCount = this.countCommentLines(text, doc.languageId);
+      commentLineCount = countCommentLines(text, doc.languageId);
       hasConflictMarkers = CONFLICT_MARKER_PATTERN.test(text);
     }
 
@@ -281,33 +282,6 @@ export class ContextBridge {
     this.aiInstructionFilesCache = files;
   }
 
-  /** Quick check whether a relative path matches a known instruction file pattern. */
-  private isInstructionFile(relativePath: string): boolean {
-    const name = relativePath.split("/").pop() ?? "";
-    const knownNames = [
-      ".cursorrules",
-      "copilot-instructions.md",
-      "CLAUDE.md",
-      ".windsurfrules",
-      "GEMINI.md",
-    ];
-    if (knownNames.includes(name)) return true;
-    if (relativePath.includes(".cursor/rules/")) return true;
-    if (relativePath.includes(".amazonq/rules/")) return true;
-    return false;
-  }
-
-  private isMcpConfigFile(relativePath: string): boolean {
-    const name = relativePath.split("/").pop() ?? "";
-    return (
-      name === ".mcp.json" ||
-      name === "mcp.json" ||
-      name === "claude_desktop_config.json" ||
-      relativePath.includes(".vscode/mcp.json") ||
-      relativePath.includes(".cursor/mcp.json")
-    );
-  }
-
   private async detectIgnoreFiles(): Promise<void> {
     const ignoreFiles: string[] = [];
     for (const pattern of ContextBridge.IGNORE_FILE_PATTERNS) {
@@ -387,51 +361,5 @@ export class ContextBridge {
     }
 
     this.toolProfileCache = null;
-  }
-
-  // Languages where # starts a line comment
-  private static readonly HASH_COMMENT_LANGUAGES = new Set([
-    "python",
-    "ruby",
-    "shellscript",
-    "yaml",
-    "perl",
-    "r",
-    "coffeescript",
-    "makefile",
-    "dockerfile",
-    "toml",
-  ]);
-
-  private countCommentLines(text: string, languageId: string): number {
-    const lines = text.split("\n");
-    let count = 0;
-    let inBlockComment = false;
-    const hashIsComment = ContextBridge.HASH_COMMENT_LANGUAGES.has(languageId);
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (inBlockComment) {
-        count++;
-        if (trimmed.includes("*/")) {
-          inBlockComment = false;
-        }
-        continue;
-      }
-
-      if (trimmed.startsWith("//")) {
-        count++;
-      } else if (hashIsComment && trimmed.startsWith("#")) {
-        count++;
-      } else if (trimmed.startsWith("/*")) {
-        count++;
-        if (!trimmed.includes("*/")) {
-          inBlockComment = true;
-        }
-      }
-    }
-
-    return count;
   }
 }
