@@ -1,0 +1,12 @@
+# vet allowlist — benign structural matches, not real exposures.
+# (gitignore syntax: comments must be on their own line, not trailing.)
+
+# intentional detector fixtures (.env, .npmrc, config samples)
+test/
+
+# secret-detection patterns, not real secrets
+.gitleaks.toml
+
+# docs with illustrative example secrets
+ARTICLE_AI_CODING_SECURITY.md
+CHANGELOG.md
