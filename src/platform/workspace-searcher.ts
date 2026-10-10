@@ -1,71 +1,18 @@
 import * as vscode from "vscode";
 import type { WorkspaceMatch } from "@deepwissen/preflight-core";
 import { extractImportPaths } from "@deepwissen/preflight-core";
+import {
+  EXCLUDE_PATTERN,
+  buildKeywordRegex,
+  escapeRegExp,
+  isCodeFile,
+  isExcludedPath,
+  resolveRelativePath,
+  testPairQuery,
+} from "./search-helpers.js";
 
 const MAX_RESULTS = 20;
 const IMPORT_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.js"];
-
-// Keywords are derived from prompt text and workspace file names, both of which
-// can contain regex metacharacters (e.g. "foo(1).ts"). Escaping them before
-// building a RegExp prevents SyntaxError crashes and regex-injection / ReDoS.
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// Shared exclude pattern for all findFiles calls — skip vendored/generated/env directories
-const EXCLUDED_DIRS = [
-  "**/node_modules/**",
-  "**/venv/**",
-  "**/.venv/**",
-  "**/env/**",
-  "**/__pycache__/**",
-  "**/.git/**",
-  "**/dist/**",
-  "**/build/**",
-  "**/out/**",
-  "**/vendor/**",
-  "**/target/**",
-  "**/.next/**",
-  "**/.nuxt/**",
-  "**/coverage/**",
-  "**/.tox/**",
-  "**/.mypy_cache/**",
-  "**/.pytest_cache/**",
-  "**/bower_components/**",
-  "**/.cargo/**",
-  "**/site-packages/**",
-].join(",");
-
-const EXCLUDE_PATTERN = `{${EXCLUDED_DIRS}}`;
-
-// Secondary check: reject paths that slipped through (e.g., nested venv, vendor dirs)
-const EXCLUDED_SEGMENTS = new Set([
-  "node_modules",
-  "venv",
-  ".venv",
-  "env",
-  "__pycache__",
-  ".git",
-  "dist",
-  "build",
-  "out",
-  "vendor",
-  "target",
-  ".next",
-  ".nuxt",
-  "coverage",
-  ".tox",
-  ".mypy_cache",
-  ".pytest_cache",
-  "bower_components",
-  ".cargo",
-  "site-packages",
-]);
-
-function isExcludedPath(relativePath: string): boolean {
-  const segments = relativePath.split("/");
-  return segments.some((seg) => EXCLUDED_SEGMENTS.has(seg));
-}
 
 /**
  * Searches the workspace for files related to the current prompt but not currently open.
@@ -201,21 +148,6 @@ async function resolveImportPath(
   return null;
 }
 
-function resolveRelativePath(baseDir: string, relativePath: string): string {
-  const parts = baseDir.split("/");
-  const segments = relativePath.split("/");
-
-  for (const seg of segments) {
-    if (seg === "..") {
-      parts.pop();
-    } else if (seg !== ".") {
-      parts.push(seg);
-    }
-  }
-
-  return parts.join("/");
-}
-
 function toWorkspaceRelative(absolutePath: string): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) return absolutePath;
@@ -270,25 +202,7 @@ export async function findTestPairs(
   token: vscode.CancellationToken
 ): Promise<WorkspaceMatch[]> {
   const matches: WorkspaceMatch[] = [];
-  const fileName = activeFilePath.split("/").pop() ?? "";
-  const baseName = fileName.replace(/\.\w+$/, "");
-
-  // Detect if this is a test file
-  const isTestFile = /\.(test|spec)\.\w+$/.test(fileName);
-
-  let searchPattern: string;
-  let keyword: string;
-
-  if (isTestFile) {
-    // Test → source: strip .test/.spec suffix
-    const sourceName = baseName.replace(/\.(test|spec)$/, "");
-    searchPattern = `**/${sourceName}.{ts,tsx,js,jsx}`;
-    keyword = sourceName;
-  } else {
-    // Source → test: search for test/spec variants
-    searchPattern = `**/${baseName}.{test,spec}.{ts,tsx,js,jsx}`;
-    keyword = baseName;
-  }
+  const { searchPattern, keyword } = testPairQuery(activeFilePath);
 
   try {
     const files = await vscode.workspace.findFiles(searchPattern, EXCLUDE_PATTERN, 5, token);
@@ -312,24 +226,6 @@ export async function findTestPairs(
 }
 
 // ─── Strategy 4: Nearby Folder Search ─────────────────────────────
-
-const CODE_EXTENSIONS = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".py",
-  ".go",
-  ".rs",
-  ".java",
-  ".rb",
-]);
-
-function isCodeFile(filePath: string): boolean {
-  const lastDot = filePath.lastIndexOf(".");
-  if (lastDot === -1) return false;
-  return CODE_EXTENSIONS.has(filePath.substring(lastDot));
-}
 
 async function searchNearbyFolders(
   existingMatches: WorkspaceMatch[],
@@ -390,8 +286,7 @@ async function searchFileContents(
 
   const matches: WorkspaceMatch[] = [];
   // Word-boundary regex to avoid partial matches (e.g., "auth" in "unauthorized")
-  const boundedKeywords = filteredKeywords.map((k) => `\\b${escapeRegExp(k)}\\b`);
-  const regex = new RegExp(boundedKeywords.join("|"), "i");
+  const regex = buildKeywordRegex(filteredKeywords);
 
   try {
     const files = await vscode.workspace.findFiles(
