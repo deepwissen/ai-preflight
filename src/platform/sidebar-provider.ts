@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import { randomBytes } from "crypto";
 import type { AnalysisResult } from "@deepwissen/preflight-core";
 import type {
   ExtensionToWebviewMessage,
@@ -7,6 +6,7 @@ import type {
 } from "@deepwissen/preflight-core";
 import { EventBus } from "@deepwissen/preflight-core";
 import { executeAction } from "./action-executor.js";
+import { badgeFor, buildWebviewHtml, getNonce } from "./sidebar-helpers.js";
 
 /**
  * Provides the webview panel for the AI Preflight sidebar.
@@ -55,14 +55,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     // Update sidebar badge — shows warning count for HIGH/MEDIUM risk
     if (this.view) {
-      const warningCount = result.wastePatterns.filter((w) => w.severity === "warning").length;
-      if (result.riskLevel === "high" && warningCount > 0) {
-        this.view.badge = { tooltip: "High risk — check context", value: warningCount };
-      } else if (result.riskLevel === "medium" && warningCount > 0) {
-        this.view.badge = { tooltip: "Medium risk", value: warningCount };
-      } else {
-        this.view.badge = undefined;
-      }
+      this.view.badge = badgeFor(result);
     }
   }
 
@@ -70,41 +63,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "dist", "webview.js")
     );
-
-    const nonce = getNonce();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
-  <title>AI Preflight</title>
-  <style>
-    body {
-      padding: 0 12px;
-      color: var(--vscode-foreground);
-      font-family: var(--vscode-font-family);
-      font-size: var(--vscode-font-size);
-    }
-    .loading {
-      opacity: 0.6;
-      padding: 16px 0;
-    }
-  </style>
-</head>
-<body>
-  <div id="root">
-    <p class="loading">Analyzing context...</p>
-  </div>
-  <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
-</body>
-</html>`;
+    return buildWebviewHtml(scriptUri.toString(), getNonce());
   }
-}
-
-function getNonce(): string {
-  // Cryptographically secure nonce for the webview CSP (32 hex chars).
-  return randomBytes(16).toString("hex");
 }
