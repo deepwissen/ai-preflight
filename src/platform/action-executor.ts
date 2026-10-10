@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { resolveWithinRoot } from "./path-safety.js";
 
 const TEST_FILE_PATTERNS = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
 
@@ -6,19 +7,18 @@ const TEST_FILE_PATTERNS = /\.(test|spec)\.(ts|tsx|js|jsx)$|__tests__\//;
  * Resolves `fileName` under `folder` and confirms the result stays inside it.
  * Action args round-trip through the webview, so a name like "../../etc/x"
  * must not be allowed to escape the workspace root when writing files.
- * Returns the safe Uri, or null if the name is absolute or escapes the root.
+ * The containment decision lives in the pure `resolveWithinRoot` (unit-tested);
+ * here we only build the real Uri once that decision passes.
+ * Returns the safe Uri, or null if the name escapes the root.
  */
 function resolveWithinWorkspace(
   folder: vscode.WorkspaceFolder,
   fileName: string
 ): vscode.Uri | null {
-  const target = vscode.Uri.joinPath(folder.uri, fileName);
-  const root = folder.uri.path.replace(/\/+$/, "");
-  // Must be the root itself (never) or a descendant path segment of it.
-  if (target.path !== root && !target.path.startsWith(root + "/")) {
+  if (resolveWithinRoot(folder.uri.path, fileName) === null) {
     return null;
   }
-  return target;
+  return vscode.Uri.joinPath(folder.uri, fileName);
 }
 
 /**
