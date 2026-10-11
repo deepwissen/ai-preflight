@@ -1,0 +1,21 @@
+name: vet
+
+# Dogfood: gate this repo's PRs with our own CLI (@deepwissen/vet).
+# Scans the PR diff for secrets, trap files, and risky tool configs.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write # for SARIF inline annotations (code scanning)
+
+jobs:
+  vet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so vet can diff against the PR base
+      - uses: deepwissen/vet@v0.1.0
+        with:
+          fail-on: error # block on real exposures; warnings are advisory
