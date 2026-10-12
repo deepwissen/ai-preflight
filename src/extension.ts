@@ -1,17 +1,7 @@
 import * as vscode from "vscode";
 import { EventBus } from "@deepwissen/preflight-core";
 import { runPipeline } from "@deepwissen/preflight-core";
-import {
-  estimateTokens,
-  detectWaste,
-  scanInstructionIntegrity,
-  scanMcpConfigs,
-  scanSecrets,
-  detectTraps,
-  scoreRisk,
-  detectPositiveSignals,
-  detectToolAwareIssues,
-} from "@deepwissen/preflight-core";
+import { createPipeline } from "./pipeline.js";
 import { ContextBridge } from "./platform/context-bridge.js";
 import { SidebarProvider } from "./platform/sidebar-provider.js";
 import { StatusBar } from "./platform/status-bar.js";
@@ -51,17 +41,7 @@ function activateInternal(context: vscode.ExtensionContext): void {
   const eventBus = new EventBus();
 
   // 2. Analysis pipeline
-  const pipelineSteps: AnalyzerStep[] = [
-    estimateTokens,
-    detectWaste,
-    scanInstructionIntegrity,
-    scanMcpConfigs,
-    scanSecrets,
-    detectTraps,
-    scoreRisk,
-    detectPositiveSignals,
-    detectToolAwareIssues,
-  ];
+  const pipelineSteps: AnalyzerStep[] = createPipeline();
 
   // 3. Platform components
   const contextBridge = new ContextBridge(eventBus);

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+### Added
+
+- **Agent-autonomy detection (OWASP LLM06 — Excessive Agency).** Preflight now flags config that lets an AI agent act without a human in the loop — e.g. `permissions.allow: ["Bash(*)"]`, `--dangerously-skip-permissions`, `autoApprove`/`alwaysAllowExecute`, and MCP `alwaysAllow: ["*"]` — live as you edit `.claude/settings.json`, `.mcp.json`, `.vscode/settings.json`, and similar. Same engine as the `vet` CLI. Scoped allows (`Bash(git:*)`, `Read(*)`) and disabled flags are not flagged.
+
+### Internal
+
+- Detection engine updated to `@deepwissen/preflight-core` 0.1.2 (adds the agent-autonomy scanner + secret-scanner false-positive fixes), consumed from npm.
+
 ## 0.9.1
 
 ### Internal
