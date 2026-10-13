@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.1
+
+### Fixed
+
+- Update to `@deepwissen/preflight-core` 0.1.3: an over-broad MCP `alwaysAllow` grant is now reported once (as an error) instead of a duplicated warning + error.
+
 ## 0.10.0
 
 ### Added
