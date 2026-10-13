@@ -25,3 +25,11 @@ CODE_OF_CONDUCT.md
 coverage/**
 **/*.map
 .npmrc
+
+# Marketing / long-form docs and dev config — not needed in the published VSIX
+# (README is the Marketplace landing; CHANGELOG + LICENSE + PRIVACY are kept).
+ARTICLE_AI_CODING_SECURITY.md
+ARTICLE_COMPLETE_GUIDE.md
+FEATURES.md
+COMMANDS.md
+.vetignore
