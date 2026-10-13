@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0
+
+### Added
+
+- **Proactive agent-autonomy scanning.** The agent-autonomy checks (OWASP LLM06) now run across **all** agent-config files detected in the workspace — `.claude/settings.json`, `.claude/settings.local.json`, `.vscode/settings.json`, `.aider.conf.yml`, `.continue/config.*` — not just the file you happen to have open. A repo that over-permissions the agent (e.g. `Bash(*)`, auto-approve) is flagged on project open, and the findings feed the risk level.
+
 ## 0.10.1
 
 ### Fixed

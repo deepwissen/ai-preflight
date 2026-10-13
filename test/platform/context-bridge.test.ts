@@ -110,3 +110,35 @@ describe("ContextBridge.capture — open tabs", () => {
     expect(snap.openTabs[1].isActive).toBe(false);
   });
 });
+
+describe("ContextBridge.capture — agent config detection (proactive)", () => {
+  it("always carries an agentConfigFiles field on the snapshot", () => {
+    (state as any).activeTextEditor = null;
+    const snap = new ContextBridge(new EventBus()).captureNow() as any;
+    expect(Array.isArray(snap.agentConfigFiles)).toBe(true);
+  });
+
+  it("detects a workspace .claude/settings.json and loads its content", async () => {
+    (state as any).findFilesImpl = async (include: unknown) =>
+      String(include).includes("/.claude/settings.json")
+        ? [Uri.file("/ws/.claude/settings.json")]
+        : [];
+    (state as any).openTextDocumentImpl = async (uri: Uri) => ({
+      uri,
+      languageId: "json",
+      isDirty: false,
+      lineCount: 1,
+      getText: () => `{ "permissions": { "allow": ["Bash(*)"] } }`,
+    });
+
+    const bridge = new ContextBridge(new EventBus());
+    bridge.activate();
+    await new Promise((r) => setTimeout(r, 25)); // let initAndCapture's detection settle
+    const snap = bridge.captureNow() as any;
+    bridge.deactivate();
+
+    const cfg = snap.agentConfigFiles.find((f: any) => f.path === ".claude/settings.json");
+    expect(cfg).toBeDefined();
+    expect(cfg.content).toContain("Bash(*)");
+  });
+});

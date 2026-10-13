@@ -22,6 +22,7 @@ export class ContextBridge {
   private disposables: vscode.Disposable[] = [];
   private aiInstructionFilesCache: InstructionFileInfo[] = [];
   private mcpConfigFilesCache: import("@deepwissen/preflight-core").McpConfigFileInfo[] = [];
+  private agentConfigFilesCache: import("@deepwissen/preflight-core").McpConfigFileInfo[] = [];
   private ignoreFilesCache: string[] = [];
   private toolProfileCache: ToolProfile | null = null;
   private editCounts = new Map<string, { count: number; lastTimestamp: number }>();
@@ -110,6 +111,7 @@ export class ContextBridge {
       this.detectAiInstructionFiles(),
       this.detectIgnoreFiles(),
       this.detectMcpConfigFiles(),
+      this.detectAgentConfigFiles(),
     ]);
     this.captureAndEmit();
   }
@@ -124,7 +126,9 @@ export class ContextBridge {
     this.eventBus.emit("context:updated", snapshot);
   }
 
-  private capture(): ContextSnapshot {
+  private capture(): ContextSnapshot & {
+    agentConfigFiles: import("@deepwissen/preflight-core").McpConfigFileInfo[];
+  } {
     const editor = vscode.window.activeTextEditor;
 
     return {
@@ -138,6 +142,9 @@ export class ContextBridge {
       chatHistoryLength: 0,
       aiInstructionFiles: this.aiInstructionFilesCache,
       mcpConfigFiles: this.mcpConfigFilesCache,
+      // Workspace agent-config files, scanned proactively by the pipeline's
+      // agent-autonomy step (OWASP LLM06) even when not the active file.
+      agentConfigFiles: this.agentConfigFilesCache,
       toolProfile: this.toolProfileCache,
       ignoreFiles: this.ignoreFilesCache,
       budgetThresholds: this.resolveBudgetThresholds(),
@@ -256,6 +263,17 @@ export class ContextBridge {
     "**/claude_desktop_config.json",
   ];
 
+  // Agent-autonomy config files (OWASP LLM06) — scanned by scanAgentConfig.
+  private static readonly AGENT_CONFIG_PATTERNS = [
+    "**/.claude/settings.json",
+    "**/.claude/settings.local.json",
+    "**/.vscode/settings.json",
+    "**/.aider.conf.yml",
+    "**/.aider.conf.yaml",
+    "**/.continue/config.json",
+    "**/.continue/config.yaml",
+  ];
+
   private async detectAiInstructionFiles(): Promise<void> {
     const files: InstructionFileInfo[] = [];
     for (const { pattern, toolId } of ContextBridge.INSTRUCTION_FILE_PATTERNS) {
@@ -320,6 +338,30 @@ export class ContextBridge {
       }
     }
     this.mcpConfigFilesCache = files;
+  }
+
+  private async detectAgentConfigFiles(): Promise<void> {
+    const files: import("@deepwissen/preflight-core").McpConfigFileInfo[] = [];
+    for (const pattern of ContextBridge.AGENT_CONFIG_PATTERNS) {
+      try {
+        const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 5);
+        for (const uri of found) {
+          const relativePath = vscode.workspace.asRelativePath(uri);
+          let content: string | undefined;
+          try {
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const text = doc.getText();
+            if (text.length <= 50_000) content = text;
+          } catch {
+            // File may not be readable
+          }
+          files.push({ path: relativePath, content });
+        }
+      } catch {
+        // Pattern search failed
+      }
+    }
+    this.agentConfigFilesCache = files;
   }
 
   /** Extension ID → AI tool mapping for auto-detection. */

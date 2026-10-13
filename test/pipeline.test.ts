@@ -53,6 +53,28 @@ describe("createPipeline — agent-autonomy wiring (OWASP LLM06)", () => {
     ).toBeUndefined();
   });
 
+  it("surfaces an agent finding from a workspace config that is NOT the active file", () => {
+    const snap = snapshot("src/app.ts", "export const x = 1;\n"); // benign active file
+    (snap as unknown as { agentConfigFiles: unknown[] }).agentConfigFiles = [
+      { path: ".claude/settings.json", content: `{ "permissions": { "allow": ["Bash(*)"] } }` },
+    ];
+    const result = runPipeline(snap, createPipeline());
+    const hit = result.instructionFileIssues.find((i) => i.issue === "agent-broad-command-allow");
+    expect(hit).toBeDefined();
+    expect(hit?.filePath).toBe(".claude/settings.json");
+  });
+
+  it("does not double-report when the active file is also a detected workspace config", () => {
+    const content = `{ "permissions": { "allow": ["Bash(*)"] } }`;
+    const snap = snapshot(".claude/settings.json", content);
+    (snap as unknown as { agentConfigFiles: unknown[] }).agentConfigFiles = [
+      { path: ".claude/settings.json", content },
+    ];
+    const result = runPipeline(snap, createPipeline());
+    const hits = result.instructionFileIssues.filter((i) => i.issue === "agent-broad-command-allow");
+    expect(hits).toHaveLength(1);
+  });
+
   it("the pipeline includes 10 analyzer steps", () => {
     expect(createPipeline()).toHaveLength(10);
   });
