@@ -16,6 +16,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so vet can diff against the PR base
-      - uses: deepwissen/vet@v0.1.1
+      - uses: deepwissen/vet@v0.1.4
         with:
           fail-on: error # block on real exposures; warnings are advisory
