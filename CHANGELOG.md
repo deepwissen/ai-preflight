@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.1
+
+### Added
+
+- **Wider prompt-injection coverage.** Integrity checks now also scan MCP config files and prompt/template files (`.prompt`, `.prompty`, `.chatmode.md`, `.github/prompts/`), and flag LLM role-tag spoofing (`<|im_start|>`, `[INST]`, `<<SYS>>`) in content that isn't a chat transcript — catching invisible/role-delimiter payloads a reviewer can't easily see.
+- **More agent-autonomy signals.** Added Codex `approval_mode: never`, `requireApproval`/`confirmBeforeRun: false`, Claude `defaultMode: acceptEdits`, and snake_case auto-approve variants.
+
+### Internal
+
+- Detection engine updated to `@deepwissen/preflight-core` 0.1.5.
+
 ## 0.11.0
 
 ### Added
