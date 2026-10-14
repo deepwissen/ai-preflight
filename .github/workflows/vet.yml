@@ -13,7 +13,7 @@ jobs:
   vet:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # so vet can diff against the PR base
       - uses: deepwissen/vet@v0.1.4
