@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.0
+
+### Added
+
+- **Unsafe YAML deserialization detection.** Flags YAML constructor tags that run code when the file is loaded (`!!python/object/apply`, `!ruby/object`, `!!javax…`) — an RCE payload hiding in a config file.
+
+### Fixed
+
+- **Far fewer false positives.** Updates the detection engine to `@deepwissen/preflight-core` 0.1.10 — six releases of real-world false-positive fixes: `access-token` / kebab field echoes, credential-less connection URLs (`jdbc:…//host/db`), AWS ARNs that reference a secret, boolean/integer config flags (`revoke_access_token: true`), IDE/build-metadata and markup entropy noise (`.idea`, `.classpath`, `.html`, `$PROJECT_DIR$` paths), Stripe publishable (`pk_live_`) keys, `${VAR}` passwords in URLs, and C/C++ parser-token assignments.
+- **Sharper template-injection check.** `{{…}}` in data is now flagged only when it looks like an SSTI payload (operators, dunders, quoted subscripts) — bare `{{ variable }}` interpolation and i18n calls no longer warn.
+
 ## 0.11.1
 
 ### Added
