@@ -1,5 +1,6 @@
 import { render } from "preact";
 import { useState, useEffect } from "preact/hooks";
+import { DETECTION_DISCLAIMER } from "@deepwissen/preflight-core";
 import type { AnalysisResult } from "@deepwissen/preflight-core";
 import type {
   ExtensionToWebviewMessage,
@@ -79,6 +80,19 @@ function App() {
         }}
       />
       <OutcomeInsights insights={result.outcomeInsights} />
+      {/* Permanent recall disclaimer — the panel must never present a clean/positive
+          view that reads as "no secrets present". A scan is bounded by recall. */}
+      <p
+        style={{
+          opacity: 0.55,
+          fontSize: "0.85em",
+          marginTop: 14,
+          paddingTop: 8,
+          borderTop: "1px solid var(--vscode-widget-border, rgba(128,128,128,0.3))",
+        }}
+      >
+        {DETECTION_DISCLAIMER}
+      </p>
     </div>
   );
 }

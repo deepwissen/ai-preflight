@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.1
+
+### Added
+
+- **Recall disclaimer, always shown.** The panel now carries a permanent footer stating a scan is bounded by detection recall — a clean or positive result does **not** mean no secrets are present (low-entropy, split, or encoded secrets evade detection). A clean panel can no longer be read as proof of safety.
+
+### Changed
+
+- Updates the detection engine to `@deepwissen/preflight-core` 0.1.12 (detected-exposure reachability and ignore-coverage hygiene signals).
+
 ## 0.12.0
 
 ### Added
