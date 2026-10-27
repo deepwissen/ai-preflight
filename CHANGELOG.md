@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.2
+
+### Fixed
+
+- **Blank panel on recent VS Code.** The webview bundle was loaded as an ES module (`<script type="module">`). Newer VS Code (newer Electron/Chromium) enforces module-script fetching more strictly — the module request from the webview resource origin could fail, leaving the AI Preflight panel blank. The bundle is now a classic self-contained script (esbuild `iife`), matching VS Code's canonical webview pattern. No behavior change beyond the panel rendering again.
+
 ## 0.12.1
 
 ### Added

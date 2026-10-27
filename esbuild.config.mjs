@@ -21,7 +21,13 @@ const webviewConfig = {
   entryPoints: ["src/ui/app.tsx"],
   bundle: true,
   outfile: "dist/webview.js",
-  format: "esm",
+  // IIFE (a classic script), NOT esm: a webview loaded with <script type="module">
+  // is fetched as a CORS request from the webview resource origin and runs
+  // deferred. Newer VS Code (newer Electron/Chromium) enforces that strictly and
+  // the module fetch can fail → a blank panel. A classic script is not subject to
+  // CORS and matches VS Code's canonical webview pattern. The bundle is fully
+  // self-contained (no imports), so IIFE output is behaviorally identical.
+  format: "iife",
   platform: "browser",
   target: "es2022",
   sourcemap: !isProduction,

@@ -30,6 +30,12 @@ describe("buildWebviewHtml — CSP nonce invariant", () => {
   it("references the provided script source", () => {
     expect(html).toContain('src="https://vscode-cdn/webview.js"');
   });
+  // Regression: a webview <script type="module"> is a CORS/deferred module fetch
+  // that newer VS Code enforces strictly, leaving the panel blank. It must be a
+  // classic script (the bundle is IIFE, so no module semantics are needed).
+  it("loads the bundle as a classic script, not a module", () => {
+    expect(html).not.toContain('type="module"');
+  });
   it("carries the real nonce through end to end", () => {
     const nonce = getNonce();
     const out = buildWebviewHtml("x.js", nonce);

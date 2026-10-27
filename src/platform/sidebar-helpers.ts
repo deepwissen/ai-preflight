@@ -38,7 +38,7 @@ export function buildWebviewHtml(scriptSrc: string, nonce: string): string {
   <div id="root">
     <p class="loading">Analyzing context...</p>
   </div>
-  <script nonce="${nonce}" type="module" src="${scriptSrc}"></script>
+  <script nonce="${nonce}" src="${scriptSrc}"></script>
 </body>
 </html>`;
 }
