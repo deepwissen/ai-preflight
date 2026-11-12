@@ -197,7 +197,7 @@
     "vitest": "^4.1.0"
   },
   "dependencies": {
-    "@deepwissen/preflight-core": "^0.1.10",
+    "@deepwissen/preflight-core": "^0.1.12",
     "preact": "^10.29.8"
   }
 }
