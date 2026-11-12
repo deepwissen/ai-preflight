@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.0
+
+### Changed
+
+- **Major detection-engine upgrade** — updates `@deepwissen/preflight-core` from 0.1.14 to 0.1.26. Twelve releases of real-world improvements, all now live in the editor:
+  - **~53 provider credential formats** (up from ~12): Anthropic, OpenAI, Twilio, SendGrid, Shopify, Stripe, DigitalOcean, Supabase, PlanetScale, Grafana, HashiCorp Vault, Atlassian, Notion, Linear, Figma, and ~25 more — high-precision, prefix-anchored.
+  - **Authorization-header credentials** (Basic/Bearer/NTLM), **PASETO** tokens, **NATS NKEY** seeds, and **JWTs** in more contexts.
+  - **JSON secret detection** (`"token": "…"` quoted keys), which the old engine missed entirely.
+  - **Far fewer false positives** — a randomness gate on non-password values plus guards for struct tags, format strings, i18n keys, translated/non-ASCII strings, version ranges, masked values, placeholder/example credentials, and code identifiers.
+  - **Short-password recovery** — real weak passwords (`"password": "brcsn"`) are no longer dropped, while junk (`root`/`test`/`changeme`) still is.
+
 ## 0.12.2
 
 ### Fixed
