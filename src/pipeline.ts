@@ -6,6 +6,7 @@ import {
   scanSecrets,
   detectTraps,
   scanAgentConfig,
+  scanSkillScope,
   scoreRisk,
   detectPositiveSignals,
   detectToolAwareIssues,
@@ -61,6 +62,22 @@ const scanAgentConfigs: AnalyzerStep = (context) => {
 };
 
 /**
+ * Over-broad declared tool scope in an agent skill (OWASP LLM06) — a SKILL.md /
+ * command / subagent that grants unrestricted shell or all-tools in its
+ * `allowed-tools` frontmatter. scanSkillScope self-filters to skill files, so it's
+ * safe to run over every detected instruction file; non-skills return nothing.
+ * (The injection/hidden-unicode/role-tag pass over skills already comes free via
+ * scanInstructionIntegrity, since skill files are detected into aiInstructionFiles.)
+ */
+const scanSkillScopes: AnalyzerStep = (context) => {
+  const issues: InstructionFileIssue[] = [];
+  for (const f of context.aiInstructionFiles ?? []) {
+    if (f.content) issues.push(...scanSkillScope(f.path, f.content));
+  }
+  return { instructionFileIssues: issues };
+};
+
+/**
  * The analysis pipeline — the ordered set of analyzers the extension runs on each
  * context snapshot. Content-security scanners run before scoreRisk so their
  * findings feed the risk level. Exported so the composition is testable.
@@ -74,6 +91,7 @@ export function createPipeline(): AnalyzerStep[] {
     scanSecrets,
     detectTraps,
     scanAgentConfigs, // OWASP LLM06 — active file + all detected workspace agent configs
+    scanSkillScopes, // OWASP LLM06 — over-broad allowed-tools in detected skills
     scoreRisk,
     detectPositiveSignals,
     detectToolAwareIssues,

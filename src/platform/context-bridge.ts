@@ -247,6 +247,12 @@ export class ContextBridge {
       { pattern: "**/.windsurfrules", toolId: "windsurf" },
       { pattern: "**/.amazonq/rules/**", toolId: "amazon-q" },
       { pattern: "**/GEMINI.md", toolId: "gemini" },
+      // Agent skills, slash commands, and subagent defs — instructions the agent
+      // obeys. Detected here so the integrity scan (injection/hidden-unicode/
+      // role-tags) and skill-scope scan (over-broad allowed-tools) run on them.
+      { pattern: "**/.claude/skills/**/SKILL.md", toolId: "claude-code" },
+      { pattern: "**/.claude/commands/**/*.md", toolId: "claude-code" },
+      { pattern: "**/.claude/agents/**/*.md", toolId: "claude-code" },
     ];
 
   private static readonly IGNORE_FILE_PATTERNS = [
@@ -278,7 +284,7 @@ export class ContextBridge {
     const files: InstructionFileInfo[] = [];
     for (const { pattern, toolId } of ContextBridge.INSTRUCTION_FILE_PATTERNS) {
       try {
-        const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 5);
+        const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 50);
         for (const uri of found) {
           const relativePath = vscode.workspace.asRelativePath(uri);
           let lineCount = 0;
